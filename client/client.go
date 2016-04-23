@@ -14,7 +14,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %v <server>\n", os.Args[0])
 		os.Exit(1)
 	}
-
+	// test
 	// EXAMPLE CODE
 	//
 	// This code is meant as an example of how to use
