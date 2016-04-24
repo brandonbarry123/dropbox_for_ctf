@@ -67,7 +67,7 @@ func main() {
 	// by methods being called on the object) can be authenticated.
 
 	c := Client{server}
-	err = client.RunCLI(&c)
+	err := client.RunCLI(&c)
 	if err != nil {
 		// don't actually log the error; it's already been
 		// printed by client.RunCLI
@@ -75,15 +75,23 @@ func main() {
 	}
 }
 
-func AskCreds(server ServerRemote) bool {
+func AskCreds(server *rpc.ServerRemote) bool {
 	reader := bufio.NewReader(os.Stdin)
         fmt.Print("Enter username: ")
-        username := reader.ReadString('\n')
+        username, readErr := reader.ReadString('\n')
         fmt.Println("Enter Password: ")
-        password := reader.ReadString('\n')
-
+        password, readErr := reader.ReadString('\n')
+	if readErr != nil {
+		fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", readErr)
+                return false
+	}
+	
         var auth bool
         err := server.Call("authenticate", &auth, username, password)
+	if err != nil {
+                fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", err)
+                return false
+        }
 	return auth
 	
 }  

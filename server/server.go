@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"encoding/base64"
 	"os"
+	"crypto/sha1"	
+			
 
 	"../internal"
 	"../lib/support/rpc"
@@ -22,6 +25,7 @@ func main() {
 	// meant as a suggestion of how you should write
 	// your application.
 
+
 	listenAddr := os.Args[1]
 
 	rpc.RegisterHandler("add", addHandler)
@@ -36,6 +40,7 @@ func main() {
 	rpc.RegisterHandler("pwd", pwdHandler)
 	rpc.RegisterHandler("cd", cdHandler)
 	rpc.RegisterFinalizer(finalizer)
+	rpc.RegisterHandler("authenticate", authenticateHandler)
 	err := rpc.RunServer(listenAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
@@ -46,6 +51,26 @@ func main() {
 func addHandler(a, b int) int  { return a + b }
 func multHandler(a, b int) int { return a * b }
 func noOpHandler()             {}
+
+func authenticateHandler(username string, password string) bool{
+	
+	fmt.Fprintf(os.Stderr, username)	
+	h := sha1.New()
+	h.Write([]byte(password))
+	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	fmt.Fprintf(os.Stderr, hash)
+
+
+
+	if(){
+		return true	
+	}else{
+	
+	}
+
+}
+
+
 
 // An implementation of a basic server. This implementation
 // is absurdly insecure, and is only meant as an example of
