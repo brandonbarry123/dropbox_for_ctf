@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-
+	"bufio"
 	"../internal"
 	"../lib/support/client"
 	"../lib/support/rpc"
@@ -27,28 +27,33 @@ func main() {
 	// Examples of calling various functions on the server
 	// over RPC.
 
-	var retInt int
-	err := server.Call("add", &retInt, 2, 4)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error calling method add: %v\n", err)
-		return
-	} else {
-		fmt.Printf("add(2, 4): %v\n", retInt)
-	}
+	//var retInt int
+	
+	if !(AskCreds(server)){
+		AskCreds(server)
+	}	
+	
+	//err := server.Call("add", &retInt, 2, 4)
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "error calling method add: %v\n", err)
+	//	return
+	//} else {
+	//	fmt.Printf("add(2, 4): %v\n", retInt)
+	//}
 
-	err = server.Call("mult", &retInt, 2, 4)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error calling method mult: %v\n", err)
-		return
-	}
-	fmt.Printf("mult(2, 4): %v\n", retInt)
+	//err = server.Call("mult", &retInt, 2, 4)
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "error calling method mult: %v\n", err)
+	//	return
+	//}
+	//fmt.Printf("mult(2, 4): %v\n", retInt)
 
-	err = server.Call("noOp", nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", err)
-		return
-	}
-	fmt.Println("noOp()")
+	//err = server.Call("noOp", nil)
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", err)
+	//	return
+	//}
+	//fmt.Println("noOp()")
 
 	// An example of how you might run a basic client.
 
@@ -69,6 +74,19 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+func AskCreds(server ServerRemote) bool {
+	reader := bufio.NewReader(os.Stdin)
+        fmt.Print("Enter username: ")
+        username := reader.ReadString('\n')
+        fmt.Println("Enter Password: ")
+        password := reader.ReadString('\n')
+
+        var auth bool
+        err := server.Call("authenticate", &auth, username, password)
+	return auth
+	
+}  
 
 // An implementation of a basic client to match the example server
 // implementation. This client/server implementation is absurdly
