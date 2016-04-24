@@ -28,9 +28,11 @@ func main() {
 	// over RPC.
 
 	//var retInt int
-	
-	if !(AskCreds(server)){
-		AskCreds(server)
+	var found_creds bool
+	found_creds = AskCreds(server)
+	for found_creds != true {
+		fmt.Fprintf(os.Stderr, "Wrong credentials!\n")
+		found_creds = AskCreds(server)
 	}	
 	
 	//err := server.Call("add", &retInt, 2, 4)

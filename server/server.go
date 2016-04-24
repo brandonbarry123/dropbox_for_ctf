@@ -6,11 +6,19 @@ import (
 	"encoding/base64"
 	"os"
 	"crypto/sha1"	
-			
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"			
+	"strings"
 
 	"../internal"
 	"../lib/support/rpc"
 )
+
+
+//Global database variable	
+var db *sql.DB
+
+
 
 func main() {
 	if len(os.Args) != 2 {
@@ -24,8 +32,21 @@ func main() {
 	// our framework, not as stencil code. It is not
 	// meant as a suggestion of how you should write
 	// your application.
+	
+	//opens database
 
 
+	fmt.Fprintf(os.Stderr, "Database Initialized...\n")
+	var err error
+	db, err = sql.Open("sqlite3", "./../dropbox.db")
+		
+	if(err!=nil){
+		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
+                os.Exit(1)		
+	}
+
+	fmt.Fprintf(os.Stderr, "made it past db\n")
+	
 	listenAddr := os.Args[1]
 
 	rpc.RegisterHandler("add", addHandler)
@@ -41,7 +62,7 @@ func main() {
 	rpc.RegisterHandler("cd", cdHandler)
 	rpc.RegisterFinalizer(finalizer)
 	rpc.RegisterHandler("authenticate", authenticateHandler)
-	err := rpc.RunServer(listenAddr)
+	err = rpc.RunServer(listenAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
 		os.Exit(1)
@@ -59,13 +80,33 @@ func authenticateHandler(username string, password string) bool{
 	h.Write([]byte(password))
 	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	fmt.Fprintf(os.Stderr, hash)
+	
+	hash = "hashhashhashhashhashhashhashhashhashhash"
+
+	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", hash)
+	
 
 
+	var found string
+	var found2 string
 
-	if(){
+	if strings.Compare(username,"admin") == 0 {
+		fmt.Fprintf(os.Stderr, "THEY'RE EQUAL\n")
+	}
+	
+	err := db.QueryRow("SELECT * FROM userdata WHERE username=?", username).Scan(&found, &found2)
+	if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              os.Exit(1)
+        }
+	
+	fmt.Fprintf(os.Stderr, "found: %v\n", found)
+	fmt.Fprintf(os.Stderr, "found2: %v\n", found2)
+
+	if(found == "1"){
 		return true	
 	}else{
-	
+		return false
 	}
 
 }
