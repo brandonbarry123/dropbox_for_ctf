@@ -94,7 +94,7 @@ func AskCreds(server *rpc.ServerRemote) bool {
 	}
 	
         var auth bool
-        err := server.Call("authenticate", &auth, strings.TrimRight(username, "\r\n"), strings.TrimRight(password, "\r\n"))
+        err := server.Call("authenticate", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
 	if err != nil {
                 fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
                 return false
