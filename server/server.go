@@ -8,7 +8,7 @@ import (
 	"crypto/sha1"	
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"			
-	"strings"
+
 
 	"../internal"
 	"../lib/support/rpc"
@@ -43,8 +43,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
                 os.Exit(1)		
 	}
-
-	fmt.Fprintf(os.Stderr, "made it past db\n")
 	
 	listenAddr := os.Args[1]
 
@@ -72,35 +70,50 @@ func addHandler(a, b int) int  { return a + b }
 func multHandler(a, b int) int { return a * b }
 func noOpHandler()             {}
 
-func authenticateHandler(username string, password string) bool{
-	
-	fmt.Fprintf(os.Stderr, username)	
+
+
+//Handler to handle authentication requests made by the client only when the user is attempting to sign in
+func authenticateHandler(username string, password string) bool{	
 	h := sha1.New()
 	h.Write([]byte(password))
 	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	fmt.Fprintf(os.Stderr, hash)
-	password = strings.TrimSpace(password)
-	username = strings.TrimSpace(username)
-	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", hash)
-	
-	
-
-	var found int
-	err := db.QueryRow("SELECT count(1) FROM userdata WHERE username=$1 AND passhash=$2", username, hash).Scan(&found)
+		
+	//make prepare statement to prevent sql injection
+	stmt, err := db.Prepare("SELECT count(1) FROM userdata WHERE username=? AND passhash=?")
 	if err != nil {
               fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
               os.Exit(1)
         }
-		
-	fmt.Fprintf(os.Stderr, "found: %v\n", found)
-	
+
+	//make query for the username and password in the database	
+	var found int
+	err = stmt.QueryRow(username, hash).Scan(&found)
+	if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+              os.Exit(1)
+        }
 	if(found == 1){
 		return true	
 	}else{
 		return false
 	}
-
 }
+
+
+
+
+
+func signupHandler() bool {
+        return true
+}
+
+
+
+
+
+
+
+
 
 
 

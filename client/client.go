@@ -64,12 +64,11 @@ func main() {
 	// by methods being called on the object) can be authenticated.
 
 	c := Client{server}
-	var found_creds bool
-        found_creds = AskCreds(server)
-        for found_creds != true {
-                fmt.Fprintf(os.Stderr, "Wrong credentials!\n")
-                found_creds = AskCreds(server)
-        }
+	fmt.Print("Welcome to CS166 Dropbox!")
+	redisplay := displayoptions(server)
+	for redisplay == true {
+		redisplay = displayoptions(server)
+	}
 	err := client.RunCLI(&c)
 	if err != nil {
 		// don't actually log the error; it's already been
@@ -77,6 +76,43 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+
+
+func displayoptions(server *rpc.ServerRemote) bool {
+	reader := bufio.NewReader(os.Stdin)
+        fmt.Print("Please select an option...\n1...Log in to an existing account\n2...Create a new account\n")
+        chosenoption, readErr := reader.ReadString('\n')
+        if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading option: %v\n", readErr)
+                os.Exit(1)
+        }
+	
+	
+	switch chosenoption {
+	case "1\n":
+		var found_creds bool
+        	found_creds = AskCreds(server)
+        	for found_creds != true {
+                	fmt.Fprintf(os.Stderr, "Wrong credentials!\n")
+                	found_creds = AskCreds(server)
+        	}
+	case "2\n":
+		//sign up
+	default:
+		fmt.Println("That's not an option!\n\n")
+		return true
+	}
+
+	return false
+}
+
+
+
+
+
+
+
 
 func AskCreds(server *rpc.ServerRemote) bool {
 	reader := bufio.NewReader(os.Stdin)
