@@ -12,6 +12,7 @@ import (
 
 
 var user string
+var currdir string
 
 func main() {
 	if len(os.Args) != 2 {
@@ -179,7 +180,7 @@ func AskCreds(server *rpc.ServerRemote) bool {
                 return false
 	}
 	user = strings.TrimRight(username, " \r\n")	
-
+	currdir = "/root/s16-bjb-hmalvai/userfs/" + user + "/"
 
         var auth bool
         err := server.Call("authenticate", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
@@ -226,7 +227,7 @@ func (c *Client) Download(path string) (body []byte, err error) {
 
 func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 	var ret internal.ListReturn
-	err = c.server.Call("list", &ret, path)
+	err = c.server.Call("list", &ret, currdir+path)
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -278,12 +279,18 @@ func (c *Client) PWD() (path string, err error) {
 
 func (c *Client) CD(path string) (err error) {
 	var ret string
-	err = c.server.Call("cd", &ret, path, user)
+	err = c.server.Call("cd", &ret, currdir+path, user)
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
+	
 	if ret != "" {
-		return fmt.Errorf(ret)
+		if(strings.HasPrefix(ret, "/root")){
+			currdir = ret
+		}else{
+			return fmt.Errorf(ret)
+		}
 	}
+
 	return nil
 }

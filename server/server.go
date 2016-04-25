@@ -276,10 +276,12 @@ func cdHandler(path string, username string) string {
 	allow := checkpath(path, username)
 
 	if(allow==true){	
-		err := os.Chdir(path)
-		if err != nil {
-			return err.Error()
+		//err := os.Chdir(path)
+		desiredpath, err := filepath.Abs(filepath.Clean(path))
+		if(err!=nil){
+			fmt.Fprintf(os.Stderr, "error abs path: %v\n")
 		}
+		return desiredpath
 	}else{
 		return "You can't go outside of your directory!"
 	}
