@@ -109,7 +109,54 @@ func displayoptions(server *rpc.ServerRemote) bool {
 
 
 
-
+func newUserDetails(server *rpc.ServerRemote) bool {
+	reader := bufio.NewReader(os.Stdin)
+        fmt.Print("Enter new username: ")
+        username, readErr := reader.ReadString('\n')
+        if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
+                return false
+        }
+	fmt.Print("Confirm new username: ")
+        username_confirm, readErr := reader.ReadString('\n')
+        if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
+                return false
+        } else {
+		if strings.Compare(username, username_confirm) != 0 {
+			fmt.Fprintf(os.Stderr, "Username does not match!")
+			newUserDetails(server)
+			return true
+		}
+	}
+	
+        fmt.Print("Enter new Password: ")
+        password, readErr := reader.ReadString('\n')
+        if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading password: %v\n", readErr)
+                return false
+        }
+	fmt.Print("Confirm new password: ")
+        password_confirm, readErr := reader.ReadString('\n')
+        if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
+                return false
+        } else {
+                for strings.Compare(username, password_confirm) != 0 {
+                        fmt.Fprintf(os.Stderr, "Password does not match!")
+                        fmt.Print("Confirm new password: ")
+        		password_confirm, readErr := reader.ReadString('\n')
+                }
+        }
+	
+        var signup bool
+        err := server.Call("signup", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
+        if err != nil {
+                fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
+                return false
+        }
+        return signup	
+}
 
 
 

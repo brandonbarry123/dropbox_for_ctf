@@ -59,6 +59,7 @@ func main() {
 	rpc.RegisterHandler("cd", cdHandler)
 	rpc.RegisterFinalizer(finalizer)
 	rpc.RegisterHandler("authenticate", authenticateHandler)
+	rpc.RegisterHandler("signup", signupHandler)
 	err = rpc.RunServer(listenAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
@@ -103,8 +104,39 @@ func authenticateHandler(username string, password string) bool{
 
 
 
-func signupHandler() bool {
-        return true
+func signupHandler(username string, password string) bool {
+        stmt, err := db.Prepare("SELECT count(1) FROM userdata WHERE username=?")
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              os.Exit(1)
+        }
+
+        //make query for the username in the database
+        var found int
+        err = stmt.QueryRow(username).Scan(&found)
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+              os.Exit(1)
+        }
+        if(found == 1){
+		fmt.Fprintf(os.Stderr, "Username already exists!")
+                return false
+        }
+        
+	h := sha1.New()
+        h.Write([]byte(password))
+        hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+
+        //make prepare statement to prevent sql injection
+        stmt, err := db.Prepare("INSERT ")
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              os.Exit(1)
+        }
+
+
+	return true
+
 }
 
 
