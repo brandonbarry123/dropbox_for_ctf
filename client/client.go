@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"bufio"
+	"strings"
 	"../internal"
 	"../lib/support/client"
 	"../lib/support/rpc"
@@ -27,13 +28,7 @@ func main() {
 	// Examples of calling various functions on the server
 	// over RPC.
 
-	//var retInt int
-	var found_creds bool
-	found_creds = AskCreds(server)
-	for found_creds != true {
-		fmt.Fprintf(os.Stderr, "Wrong credentials!\n")
-		found_creds = AskCreds(server)
-	}	
+	//var retInt int	
 	
 	//err := server.Call("add", &retInt, 2, 4)
 	//if err != nil {
@@ -69,6 +64,12 @@ func main() {
 	// by methods being called on the object) can be authenticated.
 
 	c := Client{server}
+	var found_creds bool
+        found_creds = AskCreds(server)
+        for found_creds != true {
+                fmt.Fprintf(os.Stderr, "Wrong credentials!\n")
+                found_creds = AskCreds(server)
+        }
 	err := client.RunCLI(&c)
 	if err != nil {
 		// don't actually log the error; it's already been
@@ -81,17 +82,21 @@ func AskCreds(server *rpc.ServerRemote) bool {
 	reader := bufio.NewReader(os.Stdin)
         fmt.Print("Enter username: ")
         username, readErr := reader.ReadString('\n')
-        fmt.Println("Enter Password: ")
+	if readErr != nil {
+                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
+                return false
+        }
+        fmt.Print("Enter Password: ")
         password, readErr := reader.ReadString('\n')
 	if readErr != nil {
-		fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", readErr)
+		fmt.Fprintf(os.Stderr, "error reading password: %v\n", readErr)
                 return false
 	}
 	
         var auth bool
-        err := server.Call("authenticate", &auth, username, password)
+        err := server.Call("authenticate", &auth, strings.TrimRight(username, "\r\n"), strings.TrimRight(password, "\r\n"))
 	if err != nil {
-                fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", err)
+                fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
                 return false
         }
 	return auth
