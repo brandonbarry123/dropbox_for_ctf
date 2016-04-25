@@ -10,6 +10,9 @@ import (
 	"../lib/support/rpc"
 )
 
+
+var user string
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %v <server>\n", os.Args[0])
@@ -99,9 +102,13 @@ func displayoptions(server *rpc.ServerRemote) bool {
         	}
 	case "2\n":
 		//sign up
-	default:
-		fmt.Println("That's not an option!\n\n")
+		signedUp := newUserDetails(server)
+        	for signedUp == false {
+        	        signedUp = newUserDetails(server)
+	        }
+		fmt.Print("New user created!\n")
 		return true
+
 	}
 
 	return false
@@ -117,18 +124,7 @@ func newUserDetails(server *rpc.ServerRemote) bool {
                 fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
                 return false
         }
-	fmt.Print("Confirm new username: ")
-        username_confirm, readErr := reader.ReadString('\n')
-        if readErr != nil {
-                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
-                return false
-        } else {
-		if strings.Compare(username, username_confirm) != 0 {
-			fmt.Fprintf(os.Stderr, "Username does not match!")
-			newUserDetails(server)
-			return true
-		}
-	}
+	
 	
         fmt.Print("Enter new Password: ")
         password, readErr := reader.ReadString('\n')
@@ -139,22 +135,29 @@ func newUserDetails(server *rpc.ServerRemote) bool {
 	fmt.Print("Confirm new password: ")
         password_confirm, readErr := reader.ReadString('\n')
         if readErr != nil {
-                fmt.Fprintf(os.Stderr, "error reading username: %v\n", readErr)
+                fmt.Fprintf(os.Stderr, "error reading password: %v\n", readErr)
                 return false
         } else {
-                for strings.Compare(username, password_confirm) != 0 {
+                for password != password_confirm {
                         fmt.Fprintf(os.Stderr, "Password does not match!")
                         fmt.Print("Confirm new password: ")
-        		password_confirm, readErr := reader.ReadString('\n')
+        		password_confirm, readErr = reader.ReadString('\n')
+			if readErr != nil {
+         		       fmt.Fprintf(os.Stderr, "error reading password: %v\n", readErr)
+               		       return false
+       			 }
                 }
         }
 	
         var signup bool
-        err := server.Call("signup", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
+        err := server.Call("signup", &signup, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
         if err != nil {
                 fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
                 return false
         }
+	if signup == false {
+		fmt.Print("Username already exists, please pick another one!\n")
+	}
         return signup	
 }
 
@@ -175,7 +178,9 @@ func AskCreds(server *rpc.ServerRemote) bool {
 		fmt.Fprintf(os.Stderr, "error reading password: %v\n", readErr)
                 return false
 	}
-	
+	user = strings.TrimRight(username, " \r\n")	
+
+
         var auth bool
         err := server.Call("authenticate", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
 	if err != nil {
@@ -273,7 +278,7 @@ func (c *Client) PWD() (path string, err error) {
 
 func (c *Client) CD(path string) (err error) {
 	var ret string
-	err = c.server.Call("cd", &ret, path)
+	err = c.server.Call("cd", &ret, path, user)
 	if err != nil {
 		return client.MakeFatalError(err)
 	}

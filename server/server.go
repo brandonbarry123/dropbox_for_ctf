@@ -8,16 +8,18 @@ import (
 	"crypto/sha1"	
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"			
-
-
+//	"github.com/gorilla/sessions"
+	"path/filepath"
 	"../internal"
 	"../lib/support/rpc"
+	"strings"
 )
 
 
 //Global database variable	
 var db *sql.DB
-
+//Global session store
+//var store = sessions.NewCookieStore([]bytes("password"))
 
 
 func main() {
@@ -60,12 +62,35 @@ func main() {
 	rpc.RegisterFinalizer(finalizer)
 	rpc.RegisterHandler("authenticate", authenticateHandler)
 	rpc.RegisterHandler("signup", signupHandler)
+//	rpc.RegisterHandler("getcookie", getcookieHandler)
+//	rpc.RegisterHandler("checkcookie", setcookieHandler)	
 	err = rpc.RunServer(listenAddr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
 		os.Exit(1)
 	}
 }
+
+
+func checkpath(path string, username string) bool{
+	basepath := "/root/s16-bjb-hmalvai/userfs/" + username
+	 
+	desiredpath, err := filepath.Abs(filepath.Clean(path))
+	
+	if(err!=nil){
+		fmt.Fprintf(os.Stderr, "abs broke: %v\n", err)
+	}	
+	fmt.Print("basepath:" + basepath+ "\n")
+	fmt.Print("desiredpath:" + desiredpath+ "\n")	
+	if(strings.HasPrefix(desiredpath, basepath)){
+		return true
+	}else{
+		return false
+	}
+}
+
+
+
 
 func addHandler(a, b int) int  { return a + b }
 func multHandler(a, b int) int { return a * b }
@@ -94,6 +119,11 @@ func authenticateHandler(username string, password string) bool{
               os.Exit(1)
         }
 	if(found == 1){
+		path:= "/root/s16-bjb-hmalvai/userfs/" + username
+		err = os.Chdir(path)
+        	if err != nil {
+               		fmt.Fprintf(os.Stderr, "could not change directory: %v\n", err)
+        	}
 		return true	
 	}else{
 		return false
@@ -114,6 +144,7 @@ func signupHandler(username string, password string) bool {
         //make query for the username in the database
         var found int
         err = stmt.QueryRow(username).Scan(&found)
+
         if err != nil {
               fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
               os.Exit(1)
@@ -128,13 +159,30 @@ func signupHandler(username string, password string) bool {
         hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
 
         //make prepare statement to prevent sql injection
-        stmt, err := db.Prepare("INSERT ")
+        stmt, err = db.Prepare("INSERT INTO userdata (username, passhash) VALUES (?, ?)")
         if err != nil {
               fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
               os.Exit(1)
         }
+	result, err := stmt.Exec(username, hash)
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              os.Exit(1)
+        }
+	fmt.Fprintf(os.Stderr, "Your account has been created")	
+	affect, err := result.RowsAffected()
+	if err != nil {
+              fmt.Fprintf(os.Stderr, "could not fetch username and password: %v\n", err)
+              os.Exit(1)
+        }
+	fmt.Println(affect)
 
-
+	path := "/root/s16-bjb-hmalvai/userfs/" + username  
+	err = os.Mkdir(path, 0775)
+	if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make directory: %v\n", err)
+              os.Exit(1)	
+        }
 	return true
 
 }
@@ -144,7 +192,18 @@ func signupHandler(username string, password string) bool {
 
 
 
+//func getcookieHandler() string {
+//	session, _ := store.Get(	
 
+//	return "cookie"
+//}
+
+
+
+//func checkcookieHandler() boolean {
+
+//	return true
+//}
 
 
 
@@ -210,11 +269,21 @@ func pwdHandler() internal.PWDReturn {
 	return internal.PWDReturn{Path: path}
 }
 
-func cdHandler(path string) string {
-	err := os.Chdir(path)
-	if err != nil {
-		return err.Error()
+func cdHandler(path string, username string) string {
+	//path is relative to current path.... should be in home directory. Lets not make it hardcoded...
+
+	
+	allow := checkpath(path, username)
+
+	if(allow==true){	
+		err := os.Chdir(path)
+		if err != nil {
+			return err.Error()
+		}
+	}else{
+		return "You can't go outside of your directory!"
 	}
+
 	return ""
 }
 
