@@ -205,7 +205,11 @@ type Client struct {
 
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
-	err = c.server.Call("upload", &ret, path, user, body, sessionid)
+<<<<<<< HEAD
+	err = c.server.Call("upload", &ret, path, body, user, sessionid)
+=======
+	err = c.server.Call("upload", &ret, path, user, body)
+>>>>>>> jasleen
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
@@ -221,7 +225,11 @@ func (c *Client) Upload(path string, body []byte) (err error) {
 
 func (c *Client) Download(path string) (body []byte, err error) {
 	var ret internal.DownloadReturn
+<<<<<<< HEAD
 	err = c.server.Call("download", &ret, path, user, sessionid)
+=======
+	err = c.server.Call("download", &ret, path, user)
+>>>>>>> jasleen
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -237,11 +245,15 @@ func (c *Client) Download(path string) (body []byte, err error) {
 
 func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 	var ret internal.ListReturn
+<<<<<<< HEAD
+	err = c.server.Call("list", &ret, currdir+path, user, sessionid)
+=======
 	if path == "" {
-                err = c.server.Call("list", &ret, currdir, user, sessionid)
+                err = c.server.Call("list", &ret, currdir, user)
         } else {
-                err = c.server.Call("list", &ret, currdir + path, user, sessionid)
+                err = c.server.Call("list", &ret, currdir + path, user)
         }
+>>>>>>> jasleen
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -261,51 +273,67 @@ func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 
 func (c *Client) Mkdir(path string) (err error) {
 	var ret string
+<<<<<<< HEAD
+	err = c.server.Call("mkdir", &ret, path, user, sessionid)
+=======
 	if path == "" {
                 fmt.Print("Usage: rm <filename>\n")
 		err = nil
         } else {
-                err = c.server.Call("mkdir", &ret, currdir+path, user, sessionid)
+                err = c.server.Call("mkdir", &ret, currdir+path, user)
         }
 
+>>>>>>> jasleen
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
+<<<<<<< HEAD
 		if(ret=="reauth"){
 			fmt.Print("Your session has expired. Please log in again.\n")
                         os.Exit(1)
 		}
 		return fmt.Errorf(ret)
+=======
+		fmt.Fprintf(os.Stderr, ret)
+>>>>>>> jasleen
 	}
 	return nil
 }
 
 func (c *Client) Remove(path string) (err error) {
 	var ret string
+<<<<<<< HEAD
+	err = c.server.Call("remove", &ret, path, user, sessionid)
+=======
 	 if path == "" {
 		fmt.Print("Usage: rm <filename>\n")
                 err = nil
         } else {
-                err = c.server.Call("remove", &ret, currdir+path, user, sessionid)
+                err = c.server.Call("remove", &ret, currdir+path, user)
         }
 
+>>>>>>> jasleen
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
+<<<<<<< HEAD
 		if(ret=="reauth"){
                         fmt.Print("Your session has expired. Please log in again.\n")
                         os.Exit(1)
                 }
 		return fmt.Errorf(ret)
+=======
+		fmt.Fprintf(os.Stderr, ret)
+>>>>>>> jasleen
 	}
 	return nil
 }
 
 func (c *Client) PWD() (path string, err error) {
+<<<<<<< HEAD
 	var ret internal.PWDReturn
-	// don't actually have any information in this return value
 	err = c.server.Call("pwd", &ret, user, sessionid)
 	if err != nil {
 		return "", client.MakeFatalError(err)
@@ -317,16 +345,31 @@ func (c *Client) PWD() (path string, err error) {
                 }
 		return "", fmt.Errorf(ret.Err)
 	}
+	return ret.Path, nil
+=======
+	//var ret internal.PWDReturn
+	//err = c.server.Call("pwd", &ret)
+	//if err != nil {
+	//	return "", client.MakeFatalError(err)
+	//}
+	//if ret.Err != "" {
+	//	return "", fmt.Errorf(ret.Err)
+	//}
+	//return ret.Path, nil
 	return strings.TrimPrefix(currdir, "../userfs"), nil
+>>>>>>> jasleen
 }
 
 func (c *Client) CD(path string) (err error) {
 	var ret string
+<<<<<<< HEAD
+	err = c.server.Call("cd", &ret, currdir+path, user, sessionid)
+=======
 
 	if path == "" {
-		err = c.server.Call("cd", &ret, currdir, user, sessionid)
+		err = c.server.Call("cd", &ret, currdir, user)
 	} else { 
-		err = c.server.Call("cd", &ret, currdir + path, user, sessionid)
+		err = c.server.Call("cd", &ret, currdir + path, user)
 	        if ret != "You can't go outside of your directory!\n" {
 			if ret != "" {
                			currdir = "../userfs/" + user + strings.SplitAfter(ret, user)[2] + "/"
@@ -339,10 +382,12 @@ func (c *Client) CD(path string) (err error) {
 		}
 
 	}
+>>>>>>> jasleen
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	
+<<<<<<< HEAD
 	if ret != "" {
 		if(ret == "reauth"){
 			fmt.Print("Your session has expired. Please log in again.\n")
@@ -355,6 +400,8 @@ func (c *Client) CD(path string) (err error) {
 			return fmt.Errorf(ret)
 		}
 	}
+=======
+>>>>>>> jasleen
 
 	return nil
 }
