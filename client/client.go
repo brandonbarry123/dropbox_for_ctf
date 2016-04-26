@@ -205,7 +205,11 @@ type Client struct {
 
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
+<<<<<<< HEAD
 	err = c.server.Call("upload", &ret, path, user, body, sessionid)
+=======
+	err = c.server.Call("upload", &ret, path, body, user, sessionid)
+>>>>>>> refs/remotes/origin/master
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
@@ -317,7 +321,11 @@ func (c *Client) PWD() (path string, err error) {
                 }
 		return "", fmt.Errorf(ret.Err)
 	}
+<<<<<<< HEAD
 	return strings.TrimPrefix(currdir, "../userfs"), nil
+=======
+	return ret.Path, nil
+>>>>>>> refs/remotes/origin/master
 }
 
 func (c *Client) CD(path string) (err error) {
