@@ -33,18 +33,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// EXAMPLE CODE
-	//
-	// This code is meant as an example of how to use
-	// our framework, not as stencil code. It is not
-	// meant as a suggestion of how you should write
-	// your application.
-	//opens database
-
-
 	fmt.Fprintf(os.Stderr, "Database Initialized...\n")
 	var err error
-	db, err = sql.Open("sqlite3", "./../dropbox.db")
+	db, err = sql.Open("sqlite3", "./dropbox.db")
 		
 	if(err!=nil){
 		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
@@ -73,7 +64,7 @@ func main() {
 
 
 func checkpath(path string, username string) bool{
-	basepath, err := filepath.Abs(filepath.Clean("../userfs/" + username))
+	basepath, err := filepath.Abs(filepath.Clean("./userfs/" + username))
 	if(err!=nil){
                 fmt.Fprintf(os.Stderr, "abs broke: %v\n", err)
         }   
@@ -82,8 +73,6 @@ func checkpath(path string, username string) bool{
 	if(err!=nil){
 		fmt.Fprintf(os.Stderr, "abs broke: %v\n", err)
 	}	
-	fmt.Print("basepath:" + basepath+ "\n")
-	fmt.Print("desiredpath:" + desiredpath+ "\n")	
 	if(strings.HasPrefix(desiredpath, basepath)){
 		return true
 	}else{
@@ -95,11 +84,6 @@ func checkpath(path string, username string) bool{
 func checkCookie(username string, session string) bool {
         fetchedcookie := Cookiemap[username]
         expirytime := fetchedcookie.expiretime
-        fmt.Print("cookie receive:" + session + "\n")
-        fmt.Print("cookie from map:" + fetchedcookie.sessionid + "\n")
-        fmt.Print("expirytime from map:")
-        fmt.Print(expirytime)
-        fmt.Print("\n")
         if(expirytime.After(time.Now())){
                 if(fetchedcookie.sessionid == session){
                         return true
@@ -140,7 +124,7 @@ func authenticateHandler(username string, password string) internal.AuthReturn{
                 }
 		//store cookie and return to client
                 newsession:=base64.URLEncoding.EncodeToString(rb)
-                exptime := time.Now().Add(time.Second*5)
+                exptime := time.Now().Add(time.Second*1000)
                 newcookie:=Cookie{newsession, exptime}
                 Cookiemap[username] = newcookie
                 return internal.AuthReturn{Auth: true, Session: newsession}	
@@ -196,11 +180,17 @@ func signupHandler(username string, password string) bool {
         }
 	fmt.Println(affect)
 
-	path := "/root/s16-bjb-hmalvai/userfs/" + username  
+	path := "./userfs/" + username  
 	err = os.Mkdir(path, 0775)
 	if err != nil {
               fmt.Fprintf(os.Stderr, "could not make directory: %v\n", err)
               os.Exit(1)	
+        }
+
+	err = os.Mkdir(path+"/Shared_with_me", 0775)
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make directory: %v\n", err)
+              os.Exit(1)        
         }
 	return true
 
@@ -222,7 +212,9 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
         }
 
 	allow := checkpath(path, username)
-        if(allow==true){ 
+
+	
+	 if(allow==true){ 
         	err := ioutil.WriteFile(path, body, 0664)
         	if err != nil {
                 	return err.Error()
@@ -342,11 +334,23 @@ func cdHandler(path string, username string, cookie string) string {
 		//err := os.Chdir(path)
 		desiredpath, err := filepath.Abs(filepath.Clean(path))
 		if(err!=nil){
-			fmt.Fprintf(os.Stderr, "error abs path: %v\n")
+                        fmt.Fprintf(os.Stderr, "error abs path: %v\n", err)
 			return ""
-		} else {
-			return desiredpath
-		}
+                }
+                
+                if _, err := os.Stat(desiredpath); os.IsNotExist(err) {
+                         return "That resource doesn't exist!\n"
+                }
+		totrim, err := filepath.Abs("./userfs")
+			
+		if(err!=nil){
+                        fmt.Fprintf(os.Stderr, "error abs path: %v\n", err)
+                        return ""
+                }
+		
+		displaydir := strings.TrimPrefix(desiredpath, totrim)
+		return "./userfs" + displaydir +"/"
+
 	}else{
 		return "You can't go outside of your directory!\n"
 	}
