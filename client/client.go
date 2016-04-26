@@ -10,7 +10,7 @@ import (
 	"../lib/support/rpc"
 )
 
-
+var sessionid string
 var user string
 var currdir string
 
@@ -109,7 +109,8 @@ func displayoptions(server *rpc.ServerRemote) bool {
 	        }
 		fmt.Print("New user created!\n")
 		return true
-
+	default:
+		return true
 	}
 
 	return false
@@ -182,13 +183,14 @@ func AskCreds(server *rpc.ServerRemote) bool {
 	user = strings.TrimRight(username, " \r\n")	
 	currdir = "../userfs/" + user + "/"
 
-        var auth bool
-        err := server.Call("authenticate", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
+        var ret internal.AuthReturn
+        err := server.Call("authenticate", &ret, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
 	if err != nil {
                 fmt.Fprintf(os.Stderr, "error authenticating: %v\n", err)
                 return false
         }
-	return auth
+	sessionid = ret.Session
+	return ret.Auth
 	
 }  
 
@@ -203,11 +205,15 @@ type Client struct {
 
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
-	err = c.server.Call("upload", &ret, path, user, body)
+	err = c.server.Call("upload", &ret, path, body, user, sessionid)
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
+		if(ret == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
 		return fmt.Errorf(ret)
 	}
 	return nil
@@ -215,11 +221,15 @@ func (c *Client) Upload(path string, body []byte) (err error) {
 
 func (c *Client) Download(path string) (body []byte, err error) {
 	var ret internal.DownloadReturn
-	err = c.server.Call("download", &ret, path, user)
+	err = c.server.Call("download", &ret, path, user, sessionid)
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
 	if ret.Err != "" {
+		if(ret.Err == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
 		return nil, fmt.Errorf(ret.Err)
 	}
 	return ret.Body, nil
@@ -236,6 +246,10 @@ func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 		return nil, client.MakeFatalError(err)
 	}
 	if ret.Err != "" {
+		if(ret.Err == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
 		return nil, fmt.Errorf(ret.Err)
 	}
 	var ents []client.DirEnt
@@ -258,7 +272,11 @@ func (c *Client) Mkdir(path string) (err error) {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
-		fmt.Fprintf(os.Stderr, ret)
+		if(ret=="reauth"){
+			fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+		}
+		return fmt.Errorf(ret)
 	}
 	return nil
 }
@@ -276,22 +294,29 @@ func (c *Client) Remove(path string) (err error) {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
-		fmt.Fprintf(os.Stderr, ret)
+		if(ret=="reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
+		return fmt.Errorf(ret)
 	}
 	return nil
 }
 
 func (c *Client) PWD() (path string, err error) {
-	//var ret internal.PWDReturn
-	//err = c.server.Call("pwd", &ret)
-	//if err != nil {
-	//	return "", client.MakeFatalError(err)
-	//}
-	//if ret.Err != "" {
-	//	return "", fmt.Errorf(ret.Err)
-	//}
-	//return ret.Path, nil
-	return strings.TrimPrefix(currdir, "../userfs"), nil
+	var ret internal.PWDReturn
+	err = c.server.Call("pwd", &ret, user, sessionid)
+	if err != nil {
+		return "", client.MakeFatalError(err)
+	}
+	if ret.Err != "" {
+		if(ret.Err=="reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
+		return "", fmt.Errorf(ret.Err)
+	}
+	return ret.Path, nil
 }
 
 func (c *Client) CD(path string) (err error) {
@@ -317,6 +342,18 @@ func (c *Client) CD(path string) (err error) {
 		return client.MakeFatalError(err)
 	}
 	
+	if ret != "" {
+		if(ret == "reauth"){
+			fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+		}
+
+		if(strings.HasPrefix(ret, "/root")){
+			currdir = ret
+		}else{
+			return fmt.Errorf(ret)
+		}
+	}
 
 	return nil
 }

@@ -50,3 +50,15 @@ type DownloadReturn struct {
 	Body []byte
 	Err  string // If no error was encountered, this will be empty
 }
+
+type AuthReturn struct {
+        Auth bool
+        Session string
+}
+
+
+
+
+
+
+
