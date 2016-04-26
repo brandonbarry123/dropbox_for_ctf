@@ -19,54 +19,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %v <server>\n", os.Args[0])
 		os.Exit(1)
 	}
-	// test
-	// EXAMPLE CODE
-	//
-	// This code is meant as an example of how to use
-	// our framework, not as stencil code. It is not
-	// meant as a suggestion of how you should write
-	// your application.
 
 	server := rpc.NewServerRemote(os.Args[1])
-
-	// Examples of calling various functions on the server
-	// over RPC.
-
-	//var retInt int	
-	
-	//err := server.Call("add", &retInt, 2, 4)
-	//if err != nil {
-	//	fmt.Fprintf(os.Stderr, "error calling method add: %v\n", err)
-	//	return
-	//} else {
-	//	fmt.Printf("add(2, 4): %v\n", retInt)
-	//}
-
-	//err = server.Call("mult", &retInt, 2, 4)
-	//if err != nil {
-	//	fmt.Fprintf(os.Stderr, "error calling method mult: %v\n", err)
-	//	return
-	//}
-	//fmt.Printf("mult(2, 4): %v\n", retInt)
-
-	//err = server.Call("noOp", nil)
-	//if err != nil {
-	//	fmt.Fprintf(os.Stderr, "error calling method noOp: %v\n", err)
-	//	return
-	//}
-	//fmt.Println("noOp()")
-
-	// An example of how you might run a basic client.
-
-	// In a real client, you'd have to first authenticate the user
-	// (note that we don't provide any support code for this,
-	// including the command-line interface). Once you the user
-	// is authenticated, the client object (of the Client type
-	// in this example, but it can be anything that implements
-	// the client.Client interface) should somehow keep hold of
-	// session information so that future requests (initiated
-	// by methods being called on the object) can be authenticated.
-
 	c := Client{server}
 	fmt.Print("Welcome to CS166 Dropbox!")
 	redisplay := displayoptions(server)
@@ -181,7 +135,7 @@ func AskCreds(server *rpc.ServerRemote) bool {
                 return false
 	}
 	user = strings.TrimRight(username, " \r\n")	
-	currdir = "../userfs/" + user + "/"
+	currdir = "./userfs/" + user + "/"
 
         var ret internal.AuthReturn
         err := server.Call("authenticate", &ret, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
@@ -205,7 +159,7 @@ type Client struct {
 
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
-	err = c.server.Call("upload", &ret, path, user, body, sessionid)
+	err = c.server.Call("upload", &ret, currdir + path, user, body, sessionid)
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
@@ -221,7 +175,7 @@ func (c *Client) Upload(path string, body []byte) (err error) {
 
 func (c *Client) Download(path string) (body []byte, err error) {
 	var ret internal.DownloadReturn
-	err = c.server.Call("download", &ret, path, user, sessionid)
+	err = c.server.Call("download", &ret, currdir+path, user, sessionid)
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -317,44 +271,29 @@ func (c *Client) PWD() (path string, err error) {
                 }
 		return "", fmt.Errorf(ret.Err)
 	}
-	return strings.TrimPrefix(currdir, "../userfs"), nil
+	return strings.TrimPrefix(currdir, "./userfs"), nil
 }
 
 func (c *Client) CD(path string) (err error) {
+
 	var ret string
+        err = c.server.Call("cd", &ret, currdir+path, user, sessionid)
+        if err != nil {
+                return client.MakeFatalError(err)
+        }
 
-	if path == "" {
-		err = c.server.Call("cd", &ret, currdir, user, sessionid)
-	} else { 
-		err = c.server.Call("cd", &ret, currdir + path, user, sessionid)
-	        if ret != "You can't go outside of your directory!\n" {
-			if ret != "" {
-               			currdir = "../userfs/" + user + strings.SplitAfter(ret, user)[2] + "/"
-	        	} else {
-				fmt.Print("Directory probably does not exist\n")
-			}
-		} else {
-			currdir = currdir
-			fmt.Print(ret)
-		}
-
-	}
-	if err != nil {
-		return client.MakeFatalError(err)
-	}
-	
-	if ret != "" {
-		if(ret == "reauth"){
-			fmt.Print("Your session has expired. Please log in again.\n")
+        if ret != "" {
+                if(ret == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
                         os.Exit(1)
-		}
+                }
 
-		if(strings.HasPrefix(ret, "/root")){
-			currdir = ret
-		}else{
-			return fmt.Errorf(ret)
-		}
-	}
+                if(strings.HasPrefix(ret, "./")){
+                        currdir = ret
+                }else{
+                        fmt.Print(ret)
+                }
+        }
 
 	return nil
 }
