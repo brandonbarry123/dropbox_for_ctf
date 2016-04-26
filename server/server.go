@@ -132,23 +132,6 @@ func authenticateHandler(username string, password string) internal.AuthReturn{
               os.Exit(1)
         }
 	if(found == 1){
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-		//path:= "../userfs/" + username
-
-		//err = os.Chdir(path)
-        	//if err != nil {
-               	//	fmt.Fprintf(os.Stderr, "could not change directory: %v\n", err)
-        	//}
-		return true	
-=======
-		path:= "/root/s16-bjb-hmalvai/userfs/" + username
-		err = os.Chdir(path)
-        	if err != nil {
-               		fmt.Fprintf(os.Stderr, "could not change directory: %v\n", err)
-        	}
->>>>>>> refs/remotes/origin/master
 		//make new random cookie
 		rb:=make([]byte, 64)
                 _, err := rand.Read(rb)
@@ -161,10 +144,6 @@ func authenticateHandler(username string, password string) internal.AuthReturn{
                 newcookie:=Cookie{newsession, exptime}
                 Cookiemap[username] = newcookie
                 return internal.AuthReturn{Auth: true, Session: newsession}	
-<<<<<<< HEAD
-=======
->>>>>>> f68685987e865f664a192f4af5b67ac5748fe3fa
->>>>>>> refs/remotes/origin/master
 	}else{
 		return internal.AuthReturn{Auth:false, Session: ""}
 	}
@@ -237,7 +216,6 @@ func signupHandler(username string, password string) bool {
 // provided in client/client.go; it should not be taken as
 // a suggestion of how to design your server.
 
-<<<<<<< HEAD
 func uploadHandler(path, username string, body []byte, cookie string) string {
        	if(checkCookie(username, cookie)==false){
         	return "reauth"
@@ -330,160 +308,6 @@ func removeHandler(path string, username string, cookie string) string {
                 return "You can't go outside of your directory!\n"
         }
 
-=======
-<<<<<<< HEAD
-func uploadHandler(path, username string, body []byte) string {
-        allow := checkpath(path, username)
-        if(allow==true){ 
-        	err := ioutil.WriteFile(path, body, 0664)
-        	if err != nil {
-                	return err.Error()
-        	}   
-        	return ""          
-         }else{ 
-                return "Path does not exist on the server!"
-         }
-
-}
-
-func downloadHandler(path, username string) internal.DownloadReturn {
-	allow := checkpath(path, username)
-        if(allow==true){
-        	body, err := ioutil.ReadFile(path)
-        	if err != nil {
-                	return internal.DownloadReturn{Err: err.Error()}
-        	}   
-        	return internal.DownloadReturn{Body: body}
-                          
-         }else{
-                return internal.DownloadReturn{Err: "Path does not exist!"}
-         }
-}
-
-func listHandler(path, username string) internal.ListReturn {
-	allow := checkpath(path, username)
-        if(allow==true){
-                fis, err := ioutil.ReadDir(path)
-        	if err != nil {
-                	return internal.ListReturn{Err: err.Error()}
-        	}
-        	var entries []internal.DirEnt
-        	for _, fi := range fis {
-                	entries = append(entries, internal.DirEnt{
-                        	IsDir_: fi.IsDir(),
-                        	Name_:  fi.Name(),
-                	})
-        	}
-        	return internal.ListReturn{Entries: entries}
-        }else{
-                return internal.ListReturn{Err: "Directory does not exist!"}
-        }
-
-}
-
-func mkdirHandler(path, username string) string {
-	allow := checkpath(path, username)
-        if(allow==true){
-        	err := os.Mkdir(path, 0775)
-       		if err != nil {
-                	return err.Error()
-        	}
-        	return ""
-        }else{
-                return "You can't go outside of your directory!\n"
-        }
-}
-
-func removeHandler(path, username string) string {
-        allow := checkpath(path, username)
-        if(allow==true){
-                err := os.Remove(path)
-        	if err != nil {
-                	return err.Error()
-        	}
-        	return ""
-        }else{
-                return "You can't go outside of your directory!\n"
-        }
-
-=======
-func uploadHandler(path string, body []byte, username string, cookie string) string {
-	if(checkCookie(username, cookie)==false){
-                return "reauth"
-        }
-	
-
-	err := ioutil.WriteFile(path, body, 0664)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
-}
-
-func downloadHandler(path string, username string, cookie string) internal.DownloadReturn {
-	if(checkCookie(username, cookie)==false){
-                return internal.DownloadReturn{Err: "reauth"}
-        }
-
-
-	body, err := ioutil.ReadFile(path)
-	if err != nil {
-		return internal.DownloadReturn{Err: err.Error()}
-	}
-	return internal.DownloadReturn{Body: body}
-}
-
-func listHandler(path string, username string, cookie string) internal.ListReturn {
-	//checking cookie...
-	if(checkCookie(username, cookie)==false){
-                return internal.ListReturn{Err: "reauth"}
-        }
-
-
-
-	fis, err := ioutil.ReadDir(path)
-	if err != nil {
-		return internal.ListReturn{Err: err.Error()}
-	}
-	var entries []internal.DirEnt
-	for _, fi := range fis {
-		entries = append(entries, internal.DirEnt{
-			IsDir_: fi.IsDir(),
-			Name_:  fi.Name(),
-		})
-	}
-	return internal.ListReturn{Entries: entries}
-}
-
-func mkdirHandler(path string, username string, cookie string) string {
-	if(checkCookie(username, cookie)==false){
-                return "reauth"
-        }
-
-
-	err := os.Mkdir(path, 0775)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
-}
-
-func removeHandler(path string, username string, cookie string) string {
-	if(checkCookie(username, cookie)==false){
-                return "reauth"
-        }
-
-
-
-
-
-	err := os.Remove(path)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
->>>>>>> f68685987e865f664a192f4af5b67ac5748fe3fa
->>>>>>> refs/remotes/origin/master
 }
 
 func pwdHandler(username string, cookie string) internal.PWDReturn {
