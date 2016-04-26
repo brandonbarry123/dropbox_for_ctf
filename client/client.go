@@ -180,7 +180,7 @@ func AskCreds(server *rpc.ServerRemote) bool {
                 return false
 	}
 	user = strings.TrimRight(username, " \r\n")	
-	currdir = "/root/s16-bjb-hmalvai/userfs/" + user + "/"
+	currdir = "../userfs/" + user + "/"
 
         var auth bool
         err := server.Call("authenticate", &auth, strings.TrimRight(username, " \r\n"), strings.TrimRight(password, " \r\n"))
@@ -203,7 +203,7 @@ type Client struct {
 
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
-	err = c.server.Call("upload", &ret, path, body)
+	err = c.server.Call("upload", &ret, path, user, body)
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
@@ -215,7 +215,7 @@ func (c *Client) Upload(path string, body []byte) (err error) {
 
 func (c *Client) Download(path string) (body []byte, err error) {
 	var ret internal.DownloadReturn
-	err = c.server.Call("download", &ret, path)
+	err = c.server.Call("download", &ret, path, user)
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -227,7 +227,11 @@ func (c *Client) Download(path string) (body []byte, err error) {
 
 func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 	var ret internal.ListReturn
-	err = c.server.Call("list", &ret, currdir+path)
+	if path == "" {
+                err = c.server.Call("list", &ret, currdir, user)
+        } else {
+                err = c.server.Call("list", &ret, currdir + path, user)
+        }
 	if err != nil {
 		return nil, client.MakeFatalError(err)
 	}
@@ -243,54 +247,76 @@ func (c *Client) List(path string) (entries []client.DirEnt, err error) {
 
 func (c *Client) Mkdir(path string) (err error) {
 	var ret string
-	err = c.server.Call("mkdir", &ret, path)
+	if path == "" {
+                fmt.Print("Usage: rm <filename>\n")
+		err = nil
+        } else {
+                err = c.server.Call("mkdir", &ret, currdir+path, user)
+        }
+
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
-		return fmt.Errorf(ret)
+		fmt.Fprintf(os.Stderr, ret)
 	}
 	return nil
 }
 
 func (c *Client) Remove(path string) (err error) {
 	var ret string
-	err = c.server.Call("remove", &ret, path)
+	 if path == "" {
+		fmt.Print("Usage: rm <filename>\n")
+                err = nil
+        } else {
+                err = c.server.Call("remove", &ret, currdir+path, user)
+        }
+
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	if ret != "" {
-		return fmt.Errorf(ret)
+		fmt.Fprintf(os.Stderr, ret)
 	}
 	return nil
 }
 
 func (c *Client) PWD() (path string, err error) {
-	var ret internal.PWDReturn
-	err = c.server.Call("pwd", &ret)
-	if err != nil {
-		return "", client.MakeFatalError(err)
-	}
-	if ret.Err != "" {
-		return "", fmt.Errorf(ret.Err)
-	}
-	return ret.Path, nil
+	//var ret internal.PWDReturn
+	//err = c.server.Call("pwd", &ret)
+	//if err != nil {
+	//	return "", client.MakeFatalError(err)
+	//}
+	//if ret.Err != "" {
+	//	return "", fmt.Errorf(ret.Err)
+	//}
+	//return ret.Path, nil
+	return strings.TrimPrefix(currdir, "../userfs"), nil
 }
 
 func (c *Client) CD(path string) (err error) {
 	var ret string
-	err = c.server.Call("cd", &ret, currdir+path, user)
+
+	if path == "" {
+		err = c.server.Call("cd", &ret, currdir, user)
+	} else { 
+		err = c.server.Call("cd", &ret, currdir + path, user)
+	        if ret != "You can't go outside of your directory!\n" {
+			if ret != "" {
+               			currdir = "../userfs/" + user + strings.SplitAfter(ret, user)[2] + "/"
+	        	} else {
+				fmt.Print("Directory probably does not exist\n")
+			}
+		} else {
+			currdir = currdir
+			fmt.Print(ret)
+		}
+
+	}
 	if err != nil {
 		return client.MakeFatalError(err)
 	}
 	
-	if ret != "" {
-		if(strings.HasPrefix(ret, "/root")){
-			currdir = ret
-		}else{
-			return fmt.Errorf(ret)
-		}
-	}
 
 	return nil
 }

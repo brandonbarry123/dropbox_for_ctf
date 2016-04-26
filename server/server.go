@@ -73,7 +73,7 @@ func main() {
 
 
 func checkpath(path string, username string) bool{
-	basepath := "/root/s16-bjb-hmalvai/userfs/" + username
+	basepath := "/Users/harjasleen/Desktop/Brown Classes/Spring2016/CS162/s16-bjb-hmalvai/userfs/" + username
 	 
 	desiredpath, err := filepath.Abs(filepath.Clean(path))
 	
@@ -119,11 +119,12 @@ func authenticateHandler(username string, password string) bool{
               os.Exit(1)
         }
 	if(found == 1){
-		path:= "/root/s16-bjb-hmalvai/userfs/" + username
-		err = os.Chdir(path)
-        	if err != nil {
-               		fmt.Fprintf(os.Stderr, "could not change directory: %v\n", err)
-        	}
+		//path:= "../userfs/" + username
+
+		//err = os.Chdir(path)
+        	//if err != nil {
+               	//	fmt.Fprintf(os.Stderr, "could not change directory: %v\n", err)
+        	//}
 		return true	
 	}else{
 		return false
@@ -214,51 +215,80 @@ func signupHandler(username string, password string) bool {
 // provided in client/client.go; it should not be taken as
 // a suggestion of how to design your server.
 
-func uploadHandler(path string, body []byte) string {
-	err := ioutil.WriteFile(path, body, 0664)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
+func uploadHandler(path, username string, body []byte) string {
+        allow := checkpath(path, username)
+        if(allow==true){ 
+        	err := ioutil.WriteFile(path, body, 0664)
+        	if err != nil {
+                	return err.Error()
+        	}   
+        	return ""          
+         }else{ 
+                return "Path does not exist on the server!"
+         }
+
 }
 
-func downloadHandler(path string) internal.DownloadReturn {
-	body, err := ioutil.ReadFile(path)
-	if err != nil {
-		return internal.DownloadReturn{Err: err.Error()}
-	}
-	return internal.DownloadReturn{Body: body}
+func downloadHandler(path, username string) internal.DownloadReturn {
+	allow := checkpath(path, username)
+        if(allow==true){
+        	body, err := ioutil.ReadFile(path)
+        	if err != nil {
+                	return internal.DownloadReturn{Err: err.Error()}
+        	}   
+        	return internal.DownloadReturn{Body: body}
+                          
+         }else{
+                return internal.DownloadReturn{Err: "Path does not exist!"}
+         }
 }
 
-func listHandler(path string) internal.ListReturn {
-	fis, err := ioutil.ReadDir(path)
-	if err != nil {
-		return internal.ListReturn{Err: err.Error()}
-	}
-	var entries []internal.DirEnt
-	for _, fi := range fis {
-		entries = append(entries, internal.DirEnt{
-			IsDir_: fi.IsDir(),
-			Name_:  fi.Name(),
-		})
-	}
-	return internal.ListReturn{Entries: entries}
+func listHandler(path, username string) internal.ListReturn {
+	allow := checkpath(path, username)
+        if(allow==true){
+                fis, err := ioutil.ReadDir(path)
+        	if err != nil {
+                	return internal.ListReturn{Err: err.Error()}
+        	}
+        	var entries []internal.DirEnt
+        	for _, fi := range fis {
+                	entries = append(entries, internal.DirEnt{
+                        	IsDir_: fi.IsDir(),
+                        	Name_:  fi.Name(),
+                	})
+        	}
+        	return internal.ListReturn{Entries: entries}
+        }else{
+                return internal.ListReturn{Err: "Directory does not exist!"}
+        }
+
 }
 
-func mkdirHandler(path string) string {
-	err := os.Mkdir(path, 0775)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
+func mkdirHandler(path, username string) string {
+	allow := checkpath(path, username)
+        if(allow==true){
+        	err := os.Mkdir(path, 0775)
+       		if err != nil {
+                	return err.Error()
+        	}
+        	return ""
+        }else{
+                return "You can't go outside of your directory!\n"
+        }
 }
 
-func removeHandler(path string) string {
-	err := os.Remove(path)
-	if err != nil {
-		return err.Error()
-	}
-	return ""
+func removeHandler(path, username string) string {
+        allow := checkpath(path, username)
+        if(allow==true){
+                err := os.Remove(path)
+        	if err != nil {
+                	return err.Error()
+        	}
+        	return ""
+        }else{
+                return "You can't go outside of your directory!\n"
+        }
+
 }
 
 func pwdHandler() internal.PWDReturn {
@@ -274,16 +304,17 @@ func cdHandler(path string, username string) string {
 
 	
 	allow := checkpath(path, username)
-
 	if(allow==true){	
 		//err := os.Chdir(path)
 		desiredpath, err := filepath.Abs(filepath.Clean(path))
 		if(err!=nil){
 			fmt.Fprintf(os.Stderr, "error abs path: %v\n")
+			return ""
+		} else {
+			return desiredpath
 		}
-		return desiredpath
 	}else{
-		return "You can't go outside of your directory!"
+		return "You can't go outside of your directory!\n"
 	}
 
 	return ""
