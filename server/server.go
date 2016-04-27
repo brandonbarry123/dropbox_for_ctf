@@ -311,7 +311,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     return err.Error()
             }				
 
-            stmt, err = db.Prepare("SELECT num_users FROM filedata WHERE filehash=?")
+            stmt, err = db.Prepare("SELECT numowners FROM filedata WHERE filehash=?")
             if err != nil {
                     fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                     os.Exit(1)
@@ -321,7 +321,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 
             new_num := curr_num + 1
 
-            stmt, err = db.Prepare("UPDATE filedata SET num_users=? WHERE filehash=?")
+            stmt, err = db.Prepare("UPDATE filedata SET numowners=? WHERE filehash=?")
             if err != nil {
                     fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                     os.Exit(1)
@@ -458,7 +458,7 @@ func removeHandler(path string, username string, cookie string) string {
             // Get the name of the origin file and the number of users who have access to the file before deletion
             parts := strings.Split(newpath, "/")
             origin_name := parts[len(parts) - 1]
-            stmt, err := db.Prepare("SELECT num_users FROM filedata WHERE filename=?")
+            stmt, err := db.Prepare("SELECT numowners FROM filedata WHERE filename=?")
             if err != nil {
                     fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                     os.Exit(1)
@@ -469,7 +469,7 @@ func removeHandler(path string, username string, cookie string) string {
             new_num := curr_num - 1
 
             if new_num > 0 {
-                stmt, err = db.Prepare("UPDATE filedata SET num_users=? WHERE filename=?")
+                stmt, err = db.Prepare("UPDATE filedata SET numowners=? WHERE filename=?")
                 if err != nil {
                         fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                         os.Exit(1)
