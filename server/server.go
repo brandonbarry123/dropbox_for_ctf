@@ -268,7 +268,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     return err.Error()
             }
             
-            stmt, err = db.Prepare("INSERT INTO filedata(filename, filehash, numusers) values(?,?,?)")
+            stmt, err = db.Prepare("INSERT INTO filedata(filename, filehash, numowners) values(?,?,?)")
             if err != nil {
                     fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                     os.Exit(1)
