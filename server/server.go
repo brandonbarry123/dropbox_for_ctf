@@ -247,33 +247,61 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
               		fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
               		os.Exit(1)
        		}	
-		if(found==1){	
+		if(found==0){	
 
-
-
-
-
+            store_at := "./filestore/file" + strconv.Itoa(filecount)
  
-        	err := ioutil.WriteFile("./filestore/file" + strconv.Itoa(filecount), body, 0664)
-
-        	if err != nil {
-                	return err.Error()
-        	}
-
-            abspath, err := filepath.Abs("./filestore/file" + strconv.Itoa(filecount))
+        	abspath, err := filepath.Abs(store_at)
             if err != nil {
                     return err.Error()
             }
+
+            err = ioutil.WriteFile(abspath, body, 0664)
+
+            if err != nil {
+                    return err.Error()
+            }
+
             err = os.Symlink(abspath, path)
 
             if err != nil {
                     return err.Error()
             }
+            
+            stmt, err = db.Prepare("INSERT INTO fileinfo(filename, filehash, num_users) values(?,?,?)")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            result, err := stmt.Exec("file" + strconv.Itoa(filecount), hash, 1)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                    os.Exit(1)
+            }
+            affect, err := result.RowsAffected()
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                    os.Exit(1)
+            }
+            fmt.Println(affect)   
+
+        
             filecount += 1
         	return ""
 
 		}else{
-			abspath, err := filepath.Abs("./filestore/file" + strconv.Itoa(filecount))
+            stmt, err = db.Prepare("SELECT filename FROM filedata WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            var found string
+            err = stmt.QueryRow(hash).Scan(&found)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+                    os.Exit(1)
+            }   
+			abspath, err := filepath.Abs(found)
             if err != nil {
                     return err.Error()
             }
@@ -283,16 +311,42 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     return err.Error()
             }				
 
+            stmt, err = db.Prepare("SELECT num_users FROM filedata WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            var curr_num int
+            err = stmt.QueryRow(hash).Scan(&curr_num)
+
+            new_num := curr_num + 1
+
+            stmt, err = db.Prepare("UPDATE filedata SET num_users=? WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            result, err := stmt.Exec(new_num, hash)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                    os.Exit(1)
+            }
+            affect, err := result.RowsAffected()
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                    os.Exit(1)
+            }
+            fmt.Println(affect)   
 
 		}
 
           
-         }else{ 
+        }else{ 
                 return "Path does not exist on the server!"
-         }
+        }
 
 	
-
+        return ""
 	
 
 }
@@ -375,19 +429,95 @@ func mkdirHandler(path string, username string, cookie string) string {
 }
 
 func removeHandler(path string, username string, cookie string) string {
-        if(checkCookie(username, cookie)==false){
-                return "reauth"
-        }
+    if(checkCookie(username, cookie)==false){
+        return "reauth"
+    }
+
 	allow := checkpath(path, username)
-        if(allow==true){
-                err := os.Remove(path)
-        	if err != nil {
-                	return err.Error()
-        	}
-        	return ""
-        }else{
-                return "You can't go outside of your directory!\n"
+    // If the user is allowed access to the path they have mentioned:
+    if(allow==true){
+        abspath, err := filepath.Abs(path)
+        if err != nil {
+            return err.Error()
         }
+        fileinfo, err := os.Lstat(abspath)
+        if err != nil {
+                return err.Error()
+        }  
+        // If that path is a legitimate symbolic link in their directory
+        if fileinfo.Mode()&os.ModeSymlink != 0 {
+            // Get the file the path links to
+            newpath, err := os.Readlink(abspath)
+            if err != nil {
+                return err.Error()
+            }  
+            err = os.Remove(abspath)
+            if err != nil {
+                return err.Error()
+            }   
+            // Get the name of the origin file and the number of users who have access to the file before deletion
+            parts := strings.Split(newpath, "/")
+            origin_name := parts[len(parts) - 1]
+            stmt, err := db.Prepare("SELECT num_users FROM filedata WHERE filename=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            var curr_num int
+            err = stmt.QueryRow(origin_name).Scan(&curr_num)
+
+            new_num := curr_num - 1
+
+            if new_num > 0 {
+                stmt, err = db.Prepare("UPDATE filedata SET num_users=? WHERE filename=?")
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                        os.Exit(1)
+                }
+                result, err := stmt.Exec(new_num, origin_name)
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                        os.Exit(1)
+                }
+                affect, err := result.RowsAffected()
+                if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                    os.Exit(1)
+                }
+                fmt.Println(affect)   
+            } else {
+                err = os.Remove(newpath)
+                if err != nil {
+                    return err.Error()
+                }
+                stmt, err = db.Prepare("DELETE FROM filedata WHERE filename=origin_name")
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                        os.Exit(1)
+                }
+                result, err := stmt.Exec(origin_name)
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                        os.Exit(1)
+                }
+                affect, err := result.RowsAffected()
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                        os.Exit(1)
+                }
+                fmt.Println(affect)
+
+            }   
+            return ""
+        } else {
+            if err != nil {
+                return "This doesn't seem to be a file you saved around these parts!\n"
+            }  
+        }   
+    }else{
+        return "You can't go outside of your directory!\n"
+    }
+    return ""
 
 }
 
