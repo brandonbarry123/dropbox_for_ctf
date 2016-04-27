@@ -227,11 +227,21 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 	
 	 if(allow==true){ 
         	err := ioutil.WriteFile("./filestore/file" + strconv.Itoa(filecount), body, 0664)
-            filecount += 1
 
         	if err != nil {
                 	return err.Error()
-        	}   
+        	}
+
+            abspath, err := filepath.Abs("./filestore/file" + strconv.Itoa(filecount))
+            if err != nil {
+                    return err.Error()
+            }
+            err = os.Symlink(abspath, path)
+
+            if err != nil {
+                    return err.Error()
+            }
+            filecount += 1
         	return ""          
          }else{ 
                 return "Path does not exist on the server!"
@@ -242,19 +252,37 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 func downloadHandler(path, username, cookie string) internal.DownloadReturn {
 	if(checkCookie(username, cookie)==false){
         	return internal.DownloadReturn{Err: "reauth"}
-        }
+    }
 	
 	allow := checkpath(path, username)
-        if(allow==true){
-        	body, err := ioutil.ReadFile(path)
-        	if err != nil {
-                	return internal.DownloadReturn{Err: err.Error()}
-        	}   
-        	return internal.DownloadReturn{Body: body}
-                          
-         }else{
-                return internal.DownloadReturn{Err: "Path does not exist!"}
-         }
+    if(allow==true){
+        abspath, err := filepath.Abs(path)
+        if err != nil {
+            return internal.DownloadReturn{Err: err.Error()}
+        }
+    	fileinfo, err := os.Lstat(abspath)
+        if err != nil {
+                return internal.DownloadReturn{Err: err.Error()}
+        }  
+
+        if fileinfo.Mode()&os.ModeSymlink != 0 {
+            newpath, err := os.Readlink(abspath)
+            if err != nil {
+                return internal.DownloadReturn{Err: err.Error()}
+            }  
+            body, err := ioutil.ReadFile(newpath)
+            if err != nil {
+                return internal.DownloadReturn{Err: err.Error()}
+            }   
+            return internal.DownloadReturn{Body: body}
+        } else {
+            if err != nil {
+                    return internal.DownloadReturn{Err: "Invalid file :(\n"}
+            }  
+        }
+
+    } 
+    return internal.DownloadReturn{Err: "Path does not exist!"}
 }
 
 func listHandler(path, username, cookie string) internal.ListReturn {
