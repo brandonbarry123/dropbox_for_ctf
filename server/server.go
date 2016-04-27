@@ -226,42 +226,45 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 
 	
 	 if(allow==true){
+		if _, err := os.Stat(path); err == nil {
+                    removeHandler(path, username, cookie)
+        	}	
 		//dedup
 		h := sha1.New()
-       	h.Write(body)
-        hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+       		h.Write(body)
+        	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
 		
 
 		
 		//make prepare statement to prevent sql injection
-    	stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
-    	if err != nil {
-         	 	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+    		stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
+    		if err != nil {
+         		fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
           		os.Exit(1)
-    	}
+    		}
 
-    	//make query for the username and password in the database
-    	var found int
-    	err = stmt.QueryRow(hash).Scan(&found)
-    	if err != nil {
+    		//make query for the username and password in the database
+    		var found int
+    		err = stmt.QueryRow(hash).Scan(&found)
+    		if err != nil {
           		fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
           		os.Exit(1)
    		}	
 		if(found==0){	
 
-            store_at := "./filestore/file" + strconv.Itoa(filecount)
+            		store_at := "./filestore/file" + strconv.Itoa(filecount)
  
-        	abspath, err := filepath.Abs(store_at)
-            fmt.Print(abspath)
-            if err != nil {
-                    return err.Error()
-            }
+        		abspath, err := filepath.Abs(store_at)
+            		fmt.Print(abspath)
+            		if err != nil {
+                    		return err.Error()
+            		}
 
-            err = ioutil.WriteFile(abspath, body, 0664)
+           		 err = ioutil.WriteFile(abspath, body, 0664)
 
-            if err != nil {
-                    return err.Error()
-            }
+            		 if err != nil {
+                    		return err.Error()
+            		}
 
             err = os.Symlink(abspath, path)
 
