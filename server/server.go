@@ -302,7 +302,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
                     os.Exit(1)
             }   
-			abspath, err := filepath.Abs(found)
+			abspath, err := filepath.Abs("./filestore/" + found)
             if err != nil {
                     return err.Error()
             }
