@@ -491,7 +491,7 @@ func removeHandler(path string, username string, cookie string) string {
                 if err != nil {
                     return err.Error()
                 }
-                stmt, err = db.Prepare("DELETE FROM filedata WHERE filename=origin_name")
+                stmt, err = db.Prepare("DELETE FROM filedata WHERE filename=?")
                 if err != nil {
                         fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                         os.Exit(1)
