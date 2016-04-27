@@ -54,8 +54,11 @@ func main() {
         }
 	fmt.Print(filecount)
 	listenAddr := os.Args[1]
-
 	
+
+	rpc.RegisterHandler("unshare", unshareHandler)
+	rpc.RegisterHandler("chperm", chpermHandler)
+	rpc.RegisterHandler("share", shareHandler)	
 	rpc.RegisterHandler("upload", uploadHandler)
 	rpc.RegisterHandler("download", downloadHandler)
 	rpc.RegisterHandler("list", listHandler)
@@ -206,6 +209,56 @@ func signupHandler(username string, password string) bool {
 	return true
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+func chpermHandler(path string, sharee string, newperm string, username string, cookie string) string {
+	if(checkCookie(username, cookie)==false){
+                return "reauth"
+        }
+	return "chperm"
+}
+
+
+
+
+
+func shareHandler(path string, sharee string, permissions string, username string, cookie string) string {
+	if(checkCookie(username, cookie)==false){
+                return "reauth"
+        }
+
+	return "share"
+}
+
+
+
+func unshareHandler(path string, sharee string, username string, cookie string) string {
+	if(checkCookie(username, cookie)==false){
+                return "reauth"
+        }
+	return "unshare"
+}
+
 
 
 

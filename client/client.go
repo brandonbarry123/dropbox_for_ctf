@@ -157,6 +157,75 @@ type Client struct {
 	server *rpc.ServerRemote
 }
 
+
+func (c *Client) Chperm(path string, sharee string, perm string) (err error) {
+	var ret string
+   	     
+        err = c.server.Call("chperm", &ret, currdir + path, sharee, perm, user, sessionid)
+        if err != nil {
+                return client.MakeFatalError(err)
+        }
+        if ret != "" { 
+                if(ret == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
+                return fmt.Errorf(ret)
+        }
+        
+        return nil
+}
+
+
+
+
+
+func (c *Client) Share(path string, sharee string, perm string) (err error) {
+	var ret string
+        err = c.server.Call("share", &ret, currdir + path, sharee, perm, user, sessionid)
+        if err != nil {
+                return client.MakeFatalError(err)
+        }
+        if ret != "" {
+                if(ret == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
+                return fmt.Errorf(ret)
+        }
+        return nil
+}
+
+
+func (c *Client) Unshare(path string, sharee string) (err error) {
+	var ret string
+
+        err = c.server.Call("unshare", &ret, currdir + path, sharee, user, sessionid)
+        if err != nil {
+                return client.MakeFatalError(err)
+        }
+        if ret != "" {
+                if(ret == "reauth"){
+                        fmt.Print("Your session has expired. Please log in again.\n")
+                        os.Exit(1)
+                }
+                return fmt.Errorf(ret)
+        }
+
+        return nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
 func (c *Client) Upload(path string, body []byte) (err error) {
 	var ret string
 	err = c.server.Call("upload", &ret, currdir + path, user, body, sessionid)

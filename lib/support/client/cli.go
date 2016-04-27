@@ -196,6 +196,45 @@ func RunCLI(c Client) error {
 			for _, c := range cmds {
 				fmt.Println("\t" + c)
 			}
+		case "chperm":
+			if len(args) != 3 {
+                                fmt.Printf("Usage: %v <filepath> <user> <permissions(r/rw)>\n", parts[0])
+                                break
+                        }
+                        err = c.Chperm(args[0], args[1], args[2])
+                        if err != nil {
+                                fmt.Fprintf(os.Stderr, "error chperm: %v\n", err)
+                                if isFatal(err) {
+                                        return err
+                                }
+                                break
+                        }
+		case "share":
+			if len(args) != 3 {
+                                fmt.Printf("Usage: %v <filepath> <user> <permissions(r/rw)>\n", parts[0])
+                                break
+                        }
+                        err = c.Share(args[0], args[1], args[2])
+                        if err != nil {
+                                fmt.Fprintf(os.Stderr, "error share: %v\n", err)
+                                if isFatal(err) {
+                                        return err
+                                }
+                                break
+                        }
+		case "unshare":
+			if len(args) != 2 {
+                                fmt.Printf("Usage: %v <filepath> <user>\n", parts[0])
+                                break
+                        }
+                        err = c.Unshare(args[0], args[1])
+                        if err != nil {
+                                fmt.Fprintf(os.Stderr, "error unshare: %v\n", err)
+                                if isFatal(err) {
+                                        return err
+                                }
+                                break
+                        }
 		default:
 			fmt.Println("Unknown command; try \"help\"")
 		}

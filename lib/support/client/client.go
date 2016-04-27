@@ -35,6 +35,14 @@ type Client interface {
 
 	// CD changes the current working directory.
 	CD(path string) (err error)
+
+	Share(path string, sharee string, perm string) (err error)
+
+	Unshare(path string, sharee string) (err error)
+
+	Chperm(path string, sharee string, perm string) (err error)
+	
+
 }
 
 // DirEnt represents a directory entry.
