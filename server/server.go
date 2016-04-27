@@ -228,25 +228,25 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 	 if(allow==true){
 		//dedup
 		h := sha1.New()
-       	 	h.Write(body)
-        	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+       	h.Write(body)
+        hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
 		
 
 		
 		//make prepare statement to prevent sql injection
-        	stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
-        	if err != nil {
-             	 	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-              		os.Exit(1)
-        	}
+    	stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
+    	if err != nil {
+         	 	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+          		os.Exit(1)
+    	}
 
-        	//make query for the username and password in the database
-        	var found int
-        	err = stmt.QueryRow(hash).Scan(&found)
-        	if err != nil {
-              		fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
-              		os.Exit(1)
-       		}	
+    	//make query for the username and password in the database
+    	var found int
+    	err = stmt.QueryRow(hash).Scan(&found)
+    	if err != nil {
+          		fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+          		os.Exit(1)
+   		}	
 		if(found==0){	
 
             store_at := "./filestore/file" + strconv.Itoa(filecount)
@@ -268,7 +268,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     return err.Error()
             }
             
-            stmt, err = db.Prepare("INSERT INTO fileinfo(filename, filehash, num_users) values(?,?,?)")
+            stmt, err = db.Prepare("INSERT INTO filedata(filename, filehash, num_users) values(?,?,?)")
             if err != nil {
                     fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                     os.Exit(1)
@@ -362,12 +362,12 @@ func downloadHandler(path, username, cookie string) internal.DownloadReturn {
         	if err != nil {
            		return internal.DownloadReturn{Err: err.Error()}
         	}
-    		fileinfo, err := os.Lstat(abspath)
+    		filedata, err := os.Lstat(abspath)
         	if err != nil {
                 	return internal.DownloadReturn{Err: err.Error()}
         	}  
 
-        if fileinfo.Mode()&os.ModeSymlink != 0 {
+        if filedata.Mode()&os.ModeSymlink != 0 {
             newpath, err := os.Readlink(abspath)
             if err != nil {
                 return internal.DownloadReturn{Err: err.Error()}
@@ -440,12 +440,12 @@ func removeHandler(path string, username string, cookie string) string {
         if err != nil {
             return err.Error()
         }
-        fileinfo, err := os.Lstat(abspath)
+        filedata, err := os.Lstat(abspath)
         if err != nil {
                 return err.Error()
         }  
         // If that path is a legitimate symbolic link in their directory
-        if fileinfo.Mode()&os.ModeSymlink != 0 {
+        if filedata.Mode()&os.ModeSymlink != 0 {
             // Get the file the path links to
             newpath, err := os.Readlink(abspath)
             if err != nil {
