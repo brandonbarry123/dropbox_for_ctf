@@ -14,6 +14,7 @@ import (
 	"../internal"
 	"../lib/support/rpc"
 	"strings"
+	"strconv"
 )
 
 
@@ -26,6 +27,7 @@ type Cookie struct {
 //Global variables
 var db *sql.DB
 var Cookiemap = make(map[string]Cookie)
+var filecount int
 
 func main() {
 	if len(os.Args) != 2 {
@@ -36,12 +38,21 @@ func main() {
 	fmt.Fprintf(os.Stderr, "Database Initialized...\n")
 	var err error
 	db, err = sql.Open("sqlite3", "./dropbox.db")
-		
 	if(err!=nil){
-		fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
+                fmt.Fprintf(os.Stderr, "could not run server: %v\n", err)
+                os.Exit(1)
+        }
+	filecount_read, err := ioutil.ReadFile("./filecount.txt")	
+	if(err!=nil){
+		fmt.Fprintf(os.Stderr, "could not read filecount: %v\n", err)
                 os.Exit(1)		
 	}
-	
+	filecount, err = strconv.Atoi(strings.TrimSuffix(string(filecount_read), "\n"))
+	if(err!=nil){
+                fmt.Fprintf(os.Stderr, "Atoi fail: %v\n", err)
+                os.Exit(1)
+        }
+	fmt.Print(filecount)
 	listenAddr := os.Args[1]
 
 	
@@ -215,7 +226,9 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 
 	
 	 if(allow==true){ 
-        	err := ioutil.WriteFile(path, body, 0664)
+        	err := ioutil.WriteFile("./filestore/file" + strconv.Itoa(filecount), body, 0664)
+            filecount += 1
+
         	if err != nil {
                 	return err.Error()
         	}   
@@ -359,5 +372,6 @@ func cdHandler(path string, username string, cookie string) string {
 }
 
 func finalizer() {
+    ioutil.WriteFile("./filecount.txt", []byte(strconv.Itoa(filecount)), 0664)
 	fmt.Println("Shutting down...")
 }
