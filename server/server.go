@@ -252,6 +252,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
             store_at := "./filestore/file" + strconv.Itoa(filecount)
  
         	abspath, err := filepath.Abs(store_at)
+            fmt.Print(abspath)
             if err != nil {
                     return err.Error()
             }
