@@ -225,7 +225,35 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 	allow := checkpath(path, username)
 
 	
-	 if(allow==true){ 
+	 if(allow==true){
+		//dedup
+		h := sha1.New()
+       	 	h.Write(body)
+        	hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+		
+
+		
+		//make prepare statement to prevent sql injection
+        	stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
+        	if err != nil {
+             	 	fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              		os.Exit(1)
+        	}
+
+        	//make query for the username and password in the database
+        	var found int
+        	err = stmt.QueryRow(hash).Scan(&found)
+        	if err != nil {
+              		fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+              		os.Exit(1)
+       		}	
+		if(found==1){	
+
+
+
+
+
+ 
         	err := ioutil.WriteFile("./filestore/file" + strconv.Itoa(filecount), body, 0664)
 
         	if err != nil {
@@ -242,28 +270,48 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                     return err.Error()
             }
             filecount += 1
-        	return ""          
+        	return ""
+
+		}else{
+			abspath, err := filepath.Abs("./filestore/file" + strconv.Itoa(filecount))
+            if err != nil {
+                    return err.Error()
+            }
+            err = os.Symlink(abspath, path)
+
+            if err != nil {
+                    return err.Error()
+            }				
+
+
+		}
+
+          
          }else{ 
                 return "Path does not exist on the server!"
          }
+
+	
+
+	
 
 }
 
 func downloadHandler(path, username, cookie string) internal.DownloadReturn {
 	if(checkCookie(username, cookie)==false){
         	return internal.DownloadReturn{Err: "reauth"}
-    }
+    	}
 	
 	allow := checkpath(path, username)
-    if(allow==true){
-        abspath, err := filepath.Abs(path)
-        if err != nil {
-            return internal.DownloadReturn{Err: err.Error()}
-        }
-    	fileinfo, err := os.Lstat(abspath)
-        if err != nil {
-                return internal.DownloadReturn{Err: err.Error()}
-        }  
+    	if(allow==true){
+        	abspath, err := filepath.Abs(path)
+        	if err != nil {
+           		return internal.DownloadReturn{Err: err.Error()}
+        	}
+    		fileinfo, err := os.Lstat(abspath)
+        	if err != nil {
+                	return internal.DownloadReturn{Err: err.Error()}
+        	}  
 
         if fileinfo.Mode()&os.ModeSymlink != 0 {
             newpath, err := os.Readlink(abspath)
