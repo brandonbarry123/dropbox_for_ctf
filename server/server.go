@@ -511,12 +511,22 @@ func removeHandler(path string, username string, cookie string) string {
                 }
                 fmt.Println(affect)
 
-            }   
+            }
+		   
             return ""
         } else {
-            if err != nil {
-                return "This doesn't seem to be a file you saved around these parts!\n"
-            }  
+		notallow,err := filepath.Abs("./userfs/" + username + "/Shared_with_me")
+		if err != nil {
+                        return err.Error()
+                }
+		if(abspath!=notallow){
+			err = os.Remove(abspath)
+			if err != nil {
+                		return "That directory isn't empty!\n"
+            		}	
+		}else{
+			return "You can't remove your Shared directory!\n"
+		}
         }   
     }else{
         return "You can't go outside of your directory!\n"
