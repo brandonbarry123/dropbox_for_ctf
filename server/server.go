@@ -52,7 +52,6 @@ func main() {
                 fmt.Fprintf(os.Stderr, "Atoi fail: %v\n", err)
                 os.Exit(1)
         }
-	fmt.Print(filecount)
 	listenAddr := os.Args[1]
 	
 
@@ -124,7 +123,7 @@ func sharerUpload(sharer string, origpath string, body []byte) string {
 		//removing all symlinks
         defer rows.Close()
         for rows.Next() {
-	    fmt.Println("looped")
+
             var shareepath string
             err = rows.Scan(&shareepath)
             if err != nil {
@@ -138,7 +137,7 @@ func sharerUpload(sharer string, origpath string, body []byte) string {
                 return "Error removing from sharee"
             }
 	
-	    fmt.Println(shareepath)        
+        
         }
 	    uploadHelper(origpath, sharer, body)
 
@@ -215,7 +214,7 @@ func uploadHelper(storepath string, username string, body []byte) string {
         }   
         if _, err := os.Stat(storepath); err == nil {
 
-	        fmt.Println("going to remove" + storepath)
+
             remove(storepath, username)
 
         }
@@ -242,8 +241,8 @@ func uploadHelper(storepath string, username string, body []byte) string {
                 os.Exit(1)
         
 	}
-	fmt.Println("FOUND!!!!!:")
-	fmt.Println(found)
+
+
         if(found==0){
 
                 store_at := "./filestore/file" + strconv.Itoa(filecount)
@@ -252,7 +251,7 @@ func uploadHelper(storepath string, username string, body []byte) string {
                 if err != nil {
                         return err.Error()
                 }
-                fmt.Println(abspath)
+
                 err = ioutil.WriteFile(abspath, body, 0664)
 
                  if err != nil {
@@ -416,12 +415,12 @@ func signupHandler(username string, password string) bool {
               os.Exit(1)
         }
 	fmt.Fprintf(os.Stderr, "Your account has been created")	
-	affect, err := result.RowsAffected()
+	_, err := result.RowsAffected()
 	if err != nil {
               fmt.Fprintf(os.Stderr, "could not fetch username and password: %v\n", err)
               os.Exit(1)
         }
-	fmt.Println(affect)
+
 
 	path := "./userfs/" + username  
 	err = os.Mkdir(path, 0775)
@@ -536,13 +535,10 @@ func shareHandler(path string, sharee string, permissions string, username strin
                   fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                   os.Exit(1)
             }
-    	fmt.Print(found)
-    	fmt.Print("\n")
-            fmt.Print(fullpath)
-    	fmt.Print("\n")
-            err = stmt.QueryRow(username, sharee, fullpath).Scan(&found)
-            fmt.Print(found)
-            fmt.Print("\n")
+
+
+        err = stmt.QueryRow(username, sharee, fullpath).Scan(&found)
+
 
     	if err != nil {
                   fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
@@ -575,9 +571,9 @@ func shareHandler(path string, sharee string, permissions string, username strin
     	loopvar := os.IsNotExist(err)
     	for !loopvar {
     		tmpfile=filename
-    		//fmt.Print("THIS WORKED" + "\n")
+
     		tmpfile = strconv.Itoa(i) + tmpfile
-    		//fmt.Print("found filename = " + filename)
+
     		_, err = os.Stat(path_to_sharee +"/"+ tmpfile); 	
     		loopvar = os.IsNotExist(err)
     		i += 1
@@ -598,7 +594,7 @@ func shareHandler(path string, sharee string, permissions string, username strin
             if err != nil {
  		         return "Something went wrong and we couldn't access your file\n"               
             }
-	       fmt.Print(path_to_sharee + "/" + filename)
+
 	       err = os.Symlink(newpath, path_to_sharee + "/" + filename)    
            if err != nil {
 		    fmt.Print(err.Error())
@@ -736,8 +732,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                         //case the file is shared
                         if(shared=="sharer"){
                                 //sharerupload
-                            fmt.Println("sharer upload")
-                            fmt.Println(storepath)
+
 			    return sharerUpload(username, storepath, body)
 
                         }else{
@@ -745,12 +740,11 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 
                                 perms:=getPerms(storepath, username)
                                 if(perms==0){
-                                        fmt.Println("sharee upload, readonly")
                                         return "Permission Denied"
 
                                 }else{
                                        	//get sharer and pass in 
-					fmt.Println("sharer upload, readwrite")
+
                                         sharerUpload(username, storepath, body)
                                         return "File Shared!"
                                 }
@@ -862,15 +856,15 @@ func mkdirHandler(path string, username string, cookie string) string {
 }
 
 func remove(path string, username string) string {
-    fmt.Println("path in remove:"+path)
+
 	allow := checkpath(path, username)
-    fmt.Println(allow)
+
 
     // If the user is allowed access to the path they have mentioned:
     if(allow==true){
-        fmt.Println("path in remove = " + path)
+
         abspath, err := filepath.Abs(path)
-        fmt.Println("abspath in remove = " + abspath)
+
         if err != nil {
             return err.Error()
         }
@@ -913,12 +907,12 @@ func remove(path string, username string) string {
                         fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
                         os.Exit(1)
                 }
-                affect, err := result.RowsAffected()
+                _, err := result.RowsAffected()
                 if err != nil {
                     fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
                     os.Exit(1)
                 }
-                fmt.Println(affect)   
+   
             } else {
                 err = os.Remove(newpath)
                 if err != nil {
@@ -1020,7 +1014,7 @@ func removeHandler(path string, username string, cookie string) string {
                         fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
                         os.Exit(1)
                     }
-                    fmt.Println(shareepath)
+
                     
                     sharee_list = append(sharee_list, shareepath)
                 }
@@ -1036,7 +1030,7 @@ func removeHandler(path string, username string, cookie string) string {
                 for i := 0; i < size; i += 1 {
                     shareepath := sharee_list[i]
                     
-                    fmt.Println(shareepath)
+
                     err = os.Remove(shareepath)
                     if err != nil {
                         fmt.Println(err)
