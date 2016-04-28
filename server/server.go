@@ -106,11 +106,60 @@ func checkCookie(username string, session string) bool {
         return false
 }
 
-//func sharerUpload() string {
+
+//passing in full path
+func sharerUpload(sharer string, origpath string) string {
+		stmt, err := db.Prepare("SELECT shareepath FROM sharedata where sharer=? AND origpath=?")
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                        os.Exit(1)
+                }
+                rows, err := stmt.Query(sharer, origpath)
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
+                        os.Exit(1)
+                }
+          	var sharee_list []string
+		//removing all symlinks
+                defer rows.Close()
+                for rows.Next() {
+                    var shareepath string
+                    err = rows.Scan(&shareepath)
+                    if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
+                        os.Exit(1)
+                    }
+        	    //symlink code.
+		   sharee_list = append(sharee_list, shareepath)
+		   err = os.Remove(shareepath)
+		   if err != nil {
+                        return "Error removing from sharee"
+		   }        
+	
+                }
+
+		//remove orig file
+		if _, err := os.Stat(path); err == nil {
+                        remove(path, username)
+                }
+
+		
 
 
 
-//}
+		size := len(sharee_list)
+		for i:=0;i<size;i+=1 {
+			shareepath:=sharee_list[i]
+			err = os.Symlink(realfile, shareepath)
+
+		}
+		
+		
+
+		
+
+
+}
 
 
 
@@ -560,6 +609,13 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                 if(shared==""){
 
 
+		prefix, err:=filepath.Abs("./userfs/"+username+"/Shared_with_me")
+		if(err!=nil){
+			return "Error finding path..."
+		}
+		if(strings.HasPrefix(storepath,prefix)){
+			return "You cannot upload a new file to Shared_with_me"
+		}  	
                 if _, err := os.Stat(path); err == nil {
                     remove(path, username)
                 }
@@ -956,7 +1012,7 @@ func removeHandler(path string, username string, cookie string) string {
                     sharee_list = append(sharee_list, shareepath)
                 }
 
-                stmt, err = db.Prepare("DELETE FROM sharedata where sharer=? AND origpath=? AND sharee=?")
+                stmt, err = db.Prepare("DELETE FROM sharedata where sharer=? AND origpath=? AND shareepath=?")
                 if err != nil {
                         fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
                         os.Exit(1)
@@ -972,7 +1028,7 @@ func removeHandler(path string, username string, cookie string) string {
                     if err != nil {
                         fmt.Println(err)
                         return "Could not unshare with someone"
-                    }
+                    }	
                     _, err = stmt.Exec(username, fullpath, shareepath)
                     if err != nil {
                         fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
