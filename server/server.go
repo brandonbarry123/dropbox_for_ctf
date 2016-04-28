@@ -108,57 +108,49 @@ func checkCookie(username string, session string) bool {
 
 
 //passing in full path
-func sharerUpload(sharer string, origpath string) string {
+func sharerUpload(sharer string, origpath string, body []byte) string {
 		stmt, err := db.Prepare("SELECT shareepath FROM sharedata where sharer=? AND origpath=?")
-                if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                        os.Exit(1)
-                }
-                rows, err := stmt.Query(sharer, origpath)
-                if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
-                        os.Exit(1)
-                }
-          	var sharee_list []string
+        if err != nil {
+                fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                os.Exit(1)
+        }
+        rows, err := stmt.Query(sharer, origpath)
+        if err != nil {
+                fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
+                os.Exit(1)
+        }
+
+      	var sharee_list []string
 		//removing all symlinks
-                defer rows.Close()
-                for rows.Next() {
-                    var shareepath string
-                    err = rows.Scan(&shareepath)
-                    if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
-                        os.Exit(1)
-                    }
-        	    //symlink code.
-		   sharee_list = append(sharee_list, shareepath)
-		   err = os.Remove(shareepath)
-		   if err != nil {
-                        return "Error removing from sharee"
-		   }        
+        defer rows.Close()
+        for rows.Next() {
+            var shareepath string
+            err = rows.Scan(&shareepath)
+            if err != nil {
+                fmt.Fprintf(os.Stderr, "could not access database: %v\n", err)
+                os.Exit(1)
+            }
+	        //symlink code.
+            sharee_list = append(sharee_list, shareepath)
+            err = os.Remove(shareepath)
+            if err != nil {
+                return "Error removing from sharee"
+            }        
+        }
 	
-                }
+		retval:= uploadHelper(origpath, sharer, body)
 
-		//remove orig file
-		if _, err := os.Stat(path); err == nil {
-                        remove(path, username)
-                }
-
-		
-
-
+        realfile, err := os.Readlink(origpath)
+        if err != nil {
+            return "Something went wrong and we couldn't access your file\n"               
+        }
 
 		size := len(sharee_list)
 		for i:=0;i<size;i+=1 {
 			shareepath:=sharee_list[i]
 			err = os.Symlink(realfile, shareepath)
-
 		}
-		
-		
-
-		
-
-
+        return "sharerUpload complete"
 }
 
 
@@ -210,6 +202,132 @@ func isSharedFile(path string) string {
         }
 }
 
+
+func uploadHelper(storepath, username string, body []byte) string {
+        prefix, err:=filepath.Abs("./userfs/"+username+"/Shared_with_me")
+        if(err!=nil){
+            return "Error finding path..."
+        }
+        if(strings.HasPrefix(storepath,prefix)){
+            return "You cannot upload a new file to Shared_with_me"
+        }   
+        if _, err := os.Stat(storepath); err == nil {
+            remove(storepath, username)
+        }else{
+            return "You have to give it a filename"
+        }
+        //dedup
+        h := sha1.New()
+        h.Write(body)
+        hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
+
+
+
+        //make prepare statement to prevent sql injection
+        stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
+        if err != nil {
+                fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                os.Exit(1)
+        }
+
+        //make query for the username and password in the database
+        var found int
+        err = stmt.QueryRow(hash).Scan(&found)
+        if err != nil {
+                fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+                os.Exit(1)
+        }
+        if(found==0){
+
+                store_at := "./filestore/file" + strconv.Itoa(filecount)
+
+                abspath, err := filepath.Abs(store_at)
+                if err != nil {
+                        return err.Error()
+                }
+
+                 err = ioutil.WriteFile(abspath, body, 0664)
+
+                 if err != nil {
+                        return err.Error()
+                }
+
+                err = os.Symlink(abspath, storepath)
+
+                if err != nil {
+                        return err.Error()
+                }
+
+                stmt, err = db.Prepare("INSERT INTO filedata(filename, filehash, numowners) values(?,?,?)")
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                        os.Exit(1)
+                }
+                result, err := stmt.Exec("file" + strconv.Itoa(filecount), hash, 1)
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                        os.Exit(1)
+                }
+                _, err = result.RowsAffected()
+
+                if err != nil {
+                        fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                        os.Exit(1)
+                }
+
+                filecount += 1
+                return ""
+
+        }else{
+            stmt, err = db.Prepare("SELECT filename FROM filedata WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            var found string
+            err = stmt.QueryRow(hash).Scan(&found)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+                    os.Exit(1)
+            }
+                        abspath, err := filepath.Abs("./filestore/" + found)
+            if err != nil {
+                    return err.Error()
+            }
+            err = os.Symlink(abspath, path)
+
+            if err != nil {
+                    return err.Error()
+            }
+
+            stmt, err = db.Prepare("SELECT numowners FROM filedata WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            var curr_num int
+            err = stmt.QueryRow(hash).Scan(&curr_num)
+
+            new_num := curr_num + 1
+
+            stmt, err = db.Prepare("UPDATE filedata SET numowners=? WHERE filehash=?")
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+            }
+            result, err := stmt.Exec(new_num, hash)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                    os.Exit(1)
+            }
+            _, err = result.RowsAffected()
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
+                    os.Exit(1)
+            }
+        }
+        return "End of uploadHelper"
+}
 
 
 
@@ -464,33 +582,32 @@ func shareHandler(path string, sharee string, permissions string, username strin
     	///////////////////////////////////////
 
     	filedata, err := os.Lstat(fullpath)
-            if err != nil {
-                 return "This is not a file or we could not locate it!\n"
-            }
+        if err != nil {
+             return "This is not a file or we could not locate it!\n"
+        }
 
-            if filedata.Mode()&os.ModeSymlink != 0 {
-                newpath, err := os.Readlink(fullpath)
-                if err != nil {
-     		return "Something went wrong and we couldn't access your file\n"               
-                }
-    	    fmt.Print(path_to_sharee + "/" + filename)
-    	    err = os.Symlink(newpath, path_to_sharee + "/" + filename)    
-    	    if err != nil {
-    		    fmt.Print(err.Error())
-                        return "Could not share!"
-                }
-    	   stmt, err = db.Prepare("INSERT INTO sharedata(sharer, sharee, origpath, shareepath, perm) values(?,?,?,?,?)")
-               if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                        os.Exit(1)
-               }
-    	   _, err = stmt.Exec(username, sharee, fullpath, path_to_sharee + "/" + filename, perm)
-                    if err != nil {
-                            fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
-                            os.Exit(1)
-                    }
-                    
-                    return "Shared!"
+        if filedata.Mode()&os.ModeSymlink != 0 {
+            newpath, err := os.Readlink(fullpath)
+            if err != nil {
+ 		         return "Something went wrong and we couldn't access your file\n"               
+            }
+	       fmt.Print(path_to_sharee + "/" + filename)
+	       err = os.Symlink(newpath, path_to_sharee + "/" + filename)    
+           if err != nil {
+		    fmt.Print(err.Error())
+                    return "Could not share!"
+            }
+	       stmt, err = db.Prepare("INSERT INTO sharedata(sharer, sharee, origpath, shareepath, perm) values(?,?,?,?,?)")
+           if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+                    os.Exit(1)
+           }
+	       _, err = stmt.Exec(username, sharee, fullpath, path_to_sharee + "/" + filename, perm)
+            if err != nil {
+                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
+                    os.Exit(1)
+            }    
+            return "Shared!"
     		
     	}	
          
@@ -607,142 +724,25 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                 shared := isSharedFile(storepath)
 
                 if(shared==""){
-
-
-		prefix, err:=filepath.Abs("./userfs/"+username+"/Shared_with_me")
-		if(err!=nil){
-			return "Error finding path..."
-		}
-		if(strings.HasPrefix(storepath,prefix)){
-			return "You cannot upload a new file to Shared_with_me"
-		}  	
-                if _, err := os.Stat(path); err == nil {
-                    remove(path, username)
-                }
-                //dedup
-                h := sha1.New()
-                h.Write(body)
-                hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
-
-
-
-                //make prepare statement to prevent sql injection
-                stmt, err := db.Prepare("SELECT count(1) FROM filedata WHERE filehash=?")
-                if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                        os.Exit(1)
-                }
-
-                //make query for the username and password in the database
-                var found int
-                err = stmt.QueryRow(hash).Scan(&found)
-                if err != nil {
-                        fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
-                        os.Exit(1)
-                }
-                if(found==0){
-
-                        store_at := "./filestore/file" + strconv.Itoa(filecount)
-
-                        abspath, err := filepath.Abs(store_at)
-                        if err != nil {
-                                return err.Error()
-                        }
-
-                         err = ioutil.WriteFile(abspath, body, 0664)
-
-                         if err != nil {
-                                return err.Error()
-                        }
-
-            err = os.Symlink(abspath, path)
-
-            if err != nil {
-                    return err.Error()
-            }
-
-            stmt, err = db.Prepare("INSERT INTO filedata(filename, filehash, numowners) values(?,?,?)")
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                    os.Exit(1)
-            }
-            result, err := stmt.Exec("file" + strconv.Itoa(filecount), hash, 1)
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
-                    os.Exit(1)
-            }
-            _, err = result.RowsAffected()
-
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
-                    os.Exit(1)
-            }
-
-            filecount += 1
-                return ""
-
-                }else{
-            stmt, err = db.Prepare("SELECT filename FROM filedata WHERE filehash=?")
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                    os.Exit(1)
-            }
-            var found string
-            err = stmt.QueryRow(hash).Scan(&found)
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
-                    os.Exit(1)
-            }
-                        abspath, err := filepath.Abs("./filestore/" + found)
-            if err != nil {
-                    return err.Error()
-            }
-            err = os.Symlink(abspath, path)
-
-            if err != nil {
-                    return err.Error()
-            }
-
-            stmt, err = db.Prepare("SELECT numowners FROM filedata WHERE filehash=?")
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                    os.Exit(1)
-            }
-            var curr_num int
-            err = stmt.QueryRow(hash).Scan(&curr_num)
-
-            new_num := curr_num + 1
-
-            stmt, err = db.Prepare("UPDATE filedata SET numowners=? WHERE filehash=?")
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
-                    os.Exit(1)
-            }
-            result, err := stmt.Exec(new_num, hash)
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
-                    os.Exit(1)
-            }
-            _, err = result.RowsAffected()
-            if err != nil {
-                    fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
-                    os.Exit(1)
-            }
-                }
-
-
+                    return uploadHelper(storepath, username, body)
                 }else{
                         //case the file is shared
                         if(shared=="sharer"){
                                 //sharerupload
+                            fmt.Println("sharer upload")
+                            return sharerUpload(storepath, username, body)
+
                         }else{
                                 // need to change this to have one more argument
+
                                 perms:=getPerms(storepath, username)
                                 if(perms==0){
+                                        fmt.Println("sharee upload, readonly")
                                         return "Permission Denied"
 
                                 }else{
-                                        //sharerUpload()
+                                        fmt.Println("sharer upload, readwrite")
+                                        sharerUpload(storepath, username, body)
                                         return "File Shared!"
                                 }
 
