@@ -112,7 +112,7 @@ func newUserDetails(server *rpc.ServerRemote) bool {
                 return false
         }
 	if signup == false {
-		fmt.Print("Username already exists, please pick another one!\n")
+		fmt.Print("Username already exists, or your username is not between 5 and 16 characters, or your password is less than 6 characters!\n")
 	}
         return signup	
 }

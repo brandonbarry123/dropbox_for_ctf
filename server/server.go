@@ -398,7 +398,15 @@ func signupHandler(username string, password string) bool {
 		fmt.Fprintf(os.Stderr, "Username already exists!")
                 return false
         }
-        
+       	if(len(username)<5 && len(username)>16){
+		return false
+	}
+	if(len(password)<6){
+		return false
+	}
+	if strings.Contains(username, "/"){
+		return false
+	}
 	h := sha1.New()
         h.Write([]byte(password))
         hash := base64.URLEncoding.EncodeToString(h.Sum(nil))
