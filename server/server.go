@@ -140,7 +140,7 @@ func sharerUpload(sharer string, origpath string, body []byte) string {
 	
 	    fmt.Println(shareepath)        
         }
-	uploadHelper(origpath, sharer, body)
+	    uploadHelper(origpath, sharer, body)
 
         realfile, err := os.Readlink(origpath)
         if err != nil {
@@ -205,7 +205,7 @@ func isSharedFile(path string) string {
 }
 
 
-func uploadHelper(storepath, username string, body []byte) string {
+func uploadHelper(storepath string, username string, body []byte) string {
         prefix, err:=filepath.Abs("./userfs/"+username+"/Shared_with_me")
         if(err!=nil){
             return "Error finding path..."
@@ -214,8 +214,10 @@ func uploadHelper(storepath, username string, body []byte) string {
             return "You cannot upload a new file to Shared_with_me"
         }   
         if _, err := os.Stat(storepath); err == nil {
-	    fmt.Println("going to remove")
+
+	        fmt.Println("going to remove" + storepath)
             remove(storepath, username)
+
         }
 
         //dedup
@@ -250,8 +252,8 @@ func uploadHelper(storepath, username string, body []byte) string {
                 if err != nil {
                         return err.Error()
                 }
-
-                 err = ioutil.WriteFile(abspath, body, 0664)
+                fmt.Println(abspath)
+                err = ioutil.WriteFile(abspath, body, 0664)
 
                  if err != nil {
                         return err.Error()
@@ -736,7 +738,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                                 //sharerupload
                             fmt.Println("sharer upload")
                             fmt.Println(storepath)
-			    return sharerUpload(path, username, body)
+			    return sharerUpload(username, storepath, body)
 
                         }else{
                                 // need to change this to have one more argument
@@ -749,7 +751,7 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                                 }else{
                                        	//get sharer and pass in 
 					fmt.Println("sharer upload, readwrite")
-                                        sharerUpload(storepath, username, body)
+                                        sharerUpload(username, storepath, body)
                                         return "File Shared!"
                                 }
 
@@ -860,11 +862,15 @@ func mkdirHandler(path string, username string, cookie string) string {
 }
 
 func remove(path string, username string) string {
-
+    fmt.Println("path in remove:"+path)
 	allow := checkpath(path, username)
+    fmt.Println(allow)
+
     // If the user is allowed access to the path they have mentioned:
     if(allow==true){
+        fmt.Println("path in remove = " + path)
         abspath, err := filepath.Abs(path)
+        fmt.Println("abspath in remove = " + abspath)
         if err != nil {
             return err.Error()
         }
