@@ -989,7 +989,7 @@ func removeHandler(path string, username string, cookie string) string {
     } else {
         return "This isn't something in your directory!"
     }
-    return "Remove did not take place"
+    return ""
 }
 
 func pwdHandler(username string, cookie string) internal.PWDReturn {
