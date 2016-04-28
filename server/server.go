@@ -124,6 +124,7 @@ func sharerUpload(sharer string, origpath string, body []byte) string {
 		//removing all symlinks
         defer rows.Close()
         for rows.Next() {
+	    fmt.Println("looped")
             var shareepath string
             err = rows.Scan(&shareepath)
             if err != nil {
@@ -135,10 +136,11 @@ func sharerUpload(sharer string, origpath string, body []byte) string {
             err = os.Remove(shareepath)
             if err != nil {
                 return "Error removing from sharee"
-            }        
-        }
+            }
 	
-		retval:= uploadHelper(origpath, sharer, body)
+	    fmt.Println(shareepath)        
+        }
+	uploadHelper(origpath, sharer, body)
 
         realfile, err := os.Readlink(origpath)
         if err != nil {
@@ -212,10 +214,10 @@ func uploadHelper(storepath, username string, body []byte) string {
             return "You cannot upload a new file to Shared_with_me"
         }   
         if _, err := os.Stat(storepath); err == nil {
+	    fmt.Println("going to remove")
             remove(storepath, username)
-        }else{
-            return "You have to give it a filename"
         }
+
         //dedup
         h := sha1.New()
         h.Write(body)
@@ -236,7 +238,10 @@ func uploadHelper(storepath, username string, body []byte) string {
         if err != nil {
                 fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
                 os.Exit(1)
-        }
+        
+	}
+	fmt.Println("FOUND!!!!!:")
+	fmt.Println(found)
         if(found==0){
 
                 store_at := "./filestore/file" + strconv.Itoa(filecount)
@@ -294,7 +299,7 @@ func uploadHelper(storepath, username string, body []byte) string {
             if err != nil {
                     return err.Error()
             }
-            err = os.Symlink(abspath, path)
+            err = os.Symlink(abspath, storepath)
 
             if err != nil {
                     return err.Error()
@@ -730,7 +735,8 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                         if(shared=="sharer"){
                                 //sharerupload
                             fmt.Println("sharer upload")
-                            return sharerUpload(storepath, username, body)
+                            fmt.Println(storepath)
+			    return sharerUpload(path, username, body)
 
                         }else{
                                 // need to change this to have one more argument
@@ -741,7 +747,8 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
                                         return "Permission Denied"
 
                                 }else{
-                                        fmt.Println("sharer upload, readwrite")
+                                       	//get sharer and pass in 
+					fmt.Println("sharer upload, readwrite")
                                         sharerUpload(storepath, username, body)
                                         return "File Shared!"
                                 }
