@@ -415,7 +415,7 @@ func signupHandler(username string, password string) bool {
               os.Exit(1)
         }
 	fmt.Fprintf(os.Stderr, "Your account has been created")	
-	_, err := result.RowsAffected()
+	_, err = result.RowsAffected()
 	if err != nil {
               fmt.Fprintf(os.Stderr, "could not fetch username and password: %v\n", err)
               os.Exit(1)
@@ -443,28 +443,76 @@ func signupHandler(username string, password string) bool {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 func chpermHandler(path string, sharee string, newperm string, username string, cookie string) string {
 	if(checkCookie(username, cookie)==false){
                 return "reauth"
         }
 	
+	    allow := checkpath(path, username)
+    if(allow==true){
 
+        owner_shared, err := filepath.Abs("./userfs/" + username + "/Shared_with_me") 
+        if err != nil {
+            return "Oops, abs failed!"
+        }
+
+        fullpath, err := filepath.Abs(filepath.Clean(path))
+        if(err!=nil){
+                fmt.Fprintf(os.Stderr, "error abs path: %v\n", err)
+                return ""
+        }
+
+        if strings.HasPrefix(fullpath, owner_shared){
+            return "Dude, you don't own this!"
+        }
+
+        if _, err := os.Stat(fullpath); os.IsNotExist(err) {
+                return "That resource doesn't exist!\n"
+        }
+
+        stmt, err := db.Prepare("SELECT count(1) FROM sharedata WHERE sharer=? AND sharee=? AND origpath=?")
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+            os.Exit(1)
+        }
+
+        var found int
+        err = stmt.QueryRow(username, sharee, fullpath).Scan(&found)
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+            os.Exit(1)
+        }
+
+        if found == 0 {
+            return "File not shared with this person."
+        }
+
+        stmt, err = db.Prepare("UPDATE sharedata SET perm=? WHERE sharer=? AND sharee=? AND origpath=?")
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              os.Exit(1)
+        }
+        
+        perm := 0
+        if newperm == "rw"{
+            perm = 1
+        } else { 
+            if newperm != "r" {
+                return "Permissions can only be r or rw"
+            }
+        }
+
+
+        _, err = stmt.Exec(perm, username, sharee, fullpath)
+        if err != nil {
+              fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+              os.Exit(1)
+        }
+
+        return "Permissions updated"
+    } else {
+        return "You don't have access to this."
+    }  
 
 
 
@@ -744,8 +792,19 @@ func uploadHandler(path, username string, body []byte, cookie string) string {
 
                                 }else{
                                        	//get sharer and pass in 
-
-                                        sharerUpload(username, storepath, body)
+					stmt, err := db.Prepare("SELECT sharer, origpath FROM sharedata WHERE shareepath=?")
+        				if err != nil {
+              					fmt.Fprintf(os.Stderr, "could not make prepared statement: %v\n", err)
+              					os.Exit(1)
+        				}
+					var sharerpath string
+       					var foundsharer string
+        				err = stmt.QueryRow(storepath).Scan(&foundsharer, &sharerpath)
+					if err != nil {
+                                                fmt.Fprintf(os.Stderr, "could not make query: %v\n", err)
+                                                os.Exit(1)
+                                        }					
+                                        sharerUpload(foundsharer, sharerpath, body)
                                         return "File Shared!"
                                 }
 
@@ -907,7 +966,7 @@ func remove(path string, username string) string {
                         fmt.Fprintf(os.Stderr, "could not update database: %v\n", err)
                         os.Exit(1)
                 }
-                _, err := result.RowsAffected()
+                _, err = result.RowsAffected()
                 if err != nil {
                     fmt.Fprintf(os.Stderr, "could not access affected parts of database: %v\n", err)
                     os.Exit(1)
