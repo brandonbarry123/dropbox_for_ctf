@@ -15,6 +15,13 @@ var sessionid string
 var user string
 var currdir string
 
+
+// This client basically follows the same example as given by the support code
+// However, we assume that the user is malicious and don't trust any client side code.
+// We have a currdir variable to keep track of the current directory in which the user is with respect to
+// their "root" but everything which is sent is checkec on the server side.
+// There are also user and sessionID global variables for the same purpose.
+
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %v <server>\n", os.Args[0])
@@ -157,11 +164,7 @@ func AskCreds(server *rpc.ServerRemote) bool {
 	
 }  
 
-// An implementation of a basic client to match the example server
-// implementation. This client/server implementation is absurdly
-// insecure, and is only meant as an example of how to implement
-// the client.Client interface; it should not be taken as a suggestion
-// of how to design your client or server.
+
 type Client struct {
 	server *rpc.ServerRemote
 }
