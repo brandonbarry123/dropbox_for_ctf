@@ -1,6 +1,7 @@
 package main
 
 import (
+	"testing"
 	"fmt"
 	"os"
 	"bufio"
@@ -34,6 +35,14 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+func TestBasic(t *testing.T) {
+	
+	
+//	c:=Client{server}
+	fmt.Println("this worked")
+}
+
 
 
 
