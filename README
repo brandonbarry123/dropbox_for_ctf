@@ -1,0 +1,77 @@
+CS166/162 Dropbox - bjb - hmalvai
+
+////////SYNOPSIS OF DROPBOX/////////
+Our dropbox successfully supports all of the original commands, plus some more. This includes:
+
+quit
+exit
+cd
+pwd
+ls
+upload
+mkdir
+download
+cat
+rm
+help
+chperm
+share
+unshare
+
+The interface has two options: log in or create a new user. Initially, the dropbox will (or... might) have no users, so you need to create one to start using it. Each user is give their own 'file system' to work with, where they can execute any of the above commands in.
+
+The sharing functionality works such that a user can share any file with another user and definine the permissions, either "r" (read) or "rw" (read/write). The shared file will then appear in the "Shared_with_me" directory of the sharee. If the sharee has read permissions, they cannot overwrite the file. If the sharee has read/write permissions, they can overwrite the shared file to yield changes to the shared file that will be reflected by all people that the file is shared with. Users are not allowed to use the Shared_with_me directory for any other purpose other than managing shared files. The sharer of a file can easily change the permissions of the shared file by using "chperm"
+
+Additionally, our server implements deduplication. If two files have the same content, then only 1 copy of the file will be stored on the server, but it will appear to each user as nothing different happened (meaning, two users could have different filenames that point to the same file). 
+
+Furthermore, our server implements sessions. Currently, the sessions expire every 1000 seconds. With each request, the user sends a cookie. If the user doesn't send the right cookie, they cannot execute any command. The cookie is given when the user logs in.	
+
+
+
+/////////STRUCTURE OF DROPBOX////////////////
+
+The way this dropbox is working is that each user is sandboxed within a directory subtree within "userfs". They cannot escape from their own directory trees through many path checks. In this directory tree, new directories are added just by creating a new directory on the filesystem. However, when a new file is uploaded, the file is stored within a different directory outside of this directory entirely, "filestore". Then, symbolic links are creating to the files in "filestore" from each user's directory tree. In this way, we handle deduplication by preventing any of the same files from existing within filestore (where two differently named symbolic links would point to a file in filestore with the same content). To determine if files are the same, each file is kept track of in a sqlite3 database. This database contains the file hashes to compare to any files that are being uploaded. Also, a filecount.txt file exists to keep track of how many files are on the database. This is used for deduplication and to have a generic naming schema for the files stored in filestore to have symbolic links to.
+
+Sessions in our dropbox are not stored in our dropbox.db, but instead in a map on the server. We chose this because we decided that sessions should not persist. This means that if the server crashes, all users will need to get a new session. The session cookies are served to the user as a random string, while the server stores the cookie associated with the user's username and the expiry time.
+
+All of the userdata persists through storing it in the sqlite3 database. In this way, each run of the server uses the same users that were created, with the same passwords. To store this userdata, we stored the hash so that attackers wouldn't get access to the passwords if they got into our system.
+
+File sharing also uses the idea of symbolic links. By sharing a file with somebody, you give them a symbolic link to the same file. If they have write access, then they can also change the contents of this file to be reflected by all users that the file was shared with. To determine what permissions are allowed for each user, we stored the shareddata in the sqlite3 database as well. This data persists across server runs. This shareddata includes where each file is located with respect to the sharer and sharee as well as who the sharer and sharer are, and what permissions are on the file for the sharee.
+
+
+
+
+
+
+////////VM CHANGES/////////////
+
+The only things that are truly needed to use our code on the virtual machine are the gotools to compile and run the .go files and sqlite3 to be able to access the database. However, we also did things like install github so that the code could be easily pushed and pulled from our github account. In addition, it should be included in our upload, but we are using a go 'driver' to make calls to the sqlite3 database from the .go code. We used a common drive that can be installed from and found at: https://github.com/mattn/go-sqlite3. As noted in the "additional notes" section as the bottom, the server.go code is agnostic to where it is in the filesystem. However, the server.go must be in a directory with the files in which it depends on, e.g. if "server" was a directory:
+
+>ls server
+dropbox.db  filecount.txt  filestore  REINITIALIZE_ALL.sh  server.go  userfs
+
+
+All of the files above are required to be in the same directory for the server code to run. But, the server directory can be anywhere on the filesystem.
+
+
+////////TESTING/PATCHING/////////
+
+Overall, we've tested every bit of functionality that we can think of. We ran into many security issues, such as simple things like allowing clients to simply log in by pressing "enter" rather than 1 or 2 at the login screen. We additionally found a lot of issues when we were allowing the users to pass in input, such as a new directory name that contains slashes. We added additional parsing on user input on the server side, essentially following that we never trust the client's input. Overall, we discovered that the way to go is to put next to no intelligence on the clientside, but to put it all on the server side so that the server remains robust incase a malicious user changes the client. However, with security in mind while coding, we never actually even experienced the issue of things like path vulnerabilities. Our first try at testing these worked because we were suspecting that it would be a big vulnerability. Some other things we found were things like allowing users to create too small of passwords, so we created a minimum user/pass length. We also did a lot of testing per change we made to verify that it works. A lot of times, we found that passing in unexpected input broke things (for example, a directory instead of a file). These were all fixed by thoroughly checking the user input to make sure it was in a form that was expected. Coding with security in mind mitigated almost all of the vulnerabilities, alongside spending an extensive amount of time planning out our design and security implementations. 
+
+
+////////ADDITIONAL NOTES/////////
+Included with our upload is a file called "REINITIALIZE_ALL.sh". This is a simple shell script to reinitialize anything in the case that something gets out of sync. We used this for our testing to clear all of the database entries and refresh the user filesystem and the filestore where we store all of the files. Also, the filecount is reset to 1 (for deduplication, used in the server). This script should be uploaded in the same directory as "server.go", "userfs", "filestore", "dropbox.db", and "filecount.txt". To elaborate, all of these files should be in the same "server" directory as there are dependencies in the server.go code on these files. 
+
+
+Another additional note in the case that something goes wrong with our database, the database can be remade by following the following schema in sqlite3:
+
+CREATE TABLE userdata(username TEXT, passhash CHAR[40]);
+CREATE TABLE filedata(filename TEXT, filehash CHAR[40], numowners INT);
+CREATE TABLE sharedata(sharer TEXT, sharee TEXT, origpath TEXT, shareepath TEXT, perm INT);
+
+
+
+
+
+
+
